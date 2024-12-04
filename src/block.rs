@@ -1,6 +1,9 @@
 use sha2::{Sha256, Digest}; // Import the necessary traits and types
-use hex; // We will use hex encoding
+use hex;
+use serde::{Deserialize, Serialize};
+// We will use hex encoding
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Block {
     pub index: u64,
     pub timestamp: u64,

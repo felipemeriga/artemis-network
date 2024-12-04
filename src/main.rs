@@ -3,16 +3,21 @@ mod blockchain;
 mod network;
 mod wallet;
 mod consensus;
+mod server;
+mod client;
+mod tests;
 
-fn main() {
-    let mut blockchain = blockchain::Blockchain::new();
 
-    // Add blocks to the blockchain with data
-    blockchain.add_block("Second Block".to_string());
-    blockchain.add_block("Third Block".to_string());
+#[tokio::main]
+async fn main() {
+    let server = tokio::spawn(async {
+        server::run_server().await;
+    });
 
-    // Print out the blockchain with hashes
-    for block in blockchain.chain {
-        println!("Block #{}: Hash: {}", block.index, block.hash);
-    }
+    let client = tokio::spawn(async {
+        client::run_client().await;
+    });
+
+    // Wait for both client and server to finish
+    let _ = tokio::try_join!(server, client);
 }

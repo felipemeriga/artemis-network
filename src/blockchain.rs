@@ -1,36 +1,61 @@
 use crate::block::Block;
+use std::sync::{Arc, Mutex};
+use serde::{Deserialize, Serialize};
+use tokio::sync::broadcast;
 
+#[derive(Deserialize, Serialize, Clone)]
 pub struct Blockchain {
     pub chain: Vec<Block>,
-    pub difficulty: usize,  // Difficulty for PoW
+    pub difficulty: usize,
 }
 
 impl Blockchain {
     pub fn new() -> Self {
-        let mut blockchain = Blockchain {
-            chain: Vec::new(),
-            difficulty: 5, // Set a default difficulty
-        };
-
-        // Create the genesis block (first block in the chain)
-        blockchain.create_genesis_block();
-
-        blockchain
+        let genesis_block = Block::new(0, 0, "Genesis Block".to_string(), "0".to_string());
+        Blockchain {
+            chain: vec![genesis_block],
+            difficulty: 4, // Set the PoW difficulty (e.g., 4 leading zeros)
+        }
     }
 
-    fn create_genesis_block(&mut self) {
-        let genesis_block = Block::new(0, 1627926783, "Genesis Block".to_string(), "0".to_string());
-        self.chain.push(genesis_block);
+    pub fn add_block(&mut self, new_block: Block) -> bool {
+        // Ensure the block's previous_hash is valid
+        let last_block = self.chain.last().unwrap();
+        if last_block.hash == new_block.previous_hash {
+            self.chain.push(new_block);
+            return true;
+        }
+        false
     }
 
-    pub fn add_block(&mut self, data: String) {
-        let previous_block = self.chain.last().unwrap();
-        let new_block = Block::new(self.chain.len() as u64, 1627926784, data, previous_block.hash.clone());
+    pub fn validate_block(&self, block: &Block) -> bool {
+        // Check if the block's hash matches the difficulty
+        let target = "0".repeat(self.difficulty);
+        block.hash.starts_with(&target)
+    }
 
-        // Mine the block
-        let mut block_to_add = new_block;
-        block_to_add.mine(self.difficulty);
+    pub fn mine_new_block(&mut self, data: String) -> Block {
+        let last_block = self.chain.last().unwrap();
+        let new_index = last_block.index + 1;
+        let new_timestamp = chrono::Utc::now().timestamp() as u64;
+        let new_block = Block::new(new_index, new_timestamp, data, last_block.hash.clone());
+        let mut mined_block = new_block;
+        mined_block.mine(self.difficulty); // Mine the block
+        mined_block
+    }
 
-        self.chain.push(block_to_add);
+    pub fn get_last_block(&self) -> &Block {
+        self.chain.last().unwrap()
+    }
+
+    pub fn get_chain(&self) -> Vec<Block> {
+        self.chain.clone()
+    }
+
+    pub fn sync_chain(&mut self, other_chain: Vec<Block>) {
+        if other_chain.len() > self.chain.len() {
+            self.chain = other_chain;
+        }
     }
 }
+
