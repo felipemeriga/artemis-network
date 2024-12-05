@@ -34,6 +34,10 @@ impl Blockchain {
         block.hash.starts_with(&target)
     }
 
+    pub fn replace_chain(&mut self, new_chain: Vec<Block>) {
+        self.chain = new_chain;
+    }
+
     pub fn mine_new_block(&mut self, data: String) -> Block {
         let last_block = self.chain.last().unwrap();
         let new_index = last_block.index + 1;
