@@ -1,5 +1,3 @@
-
-
 #[cfg(test)]
 mod tests {
     use crate::blockchain;
@@ -19,6 +17,5 @@ mod tests {
             println!("Block #{}: Hash: {}", block.index, block.hash);
         }
         assert_eq!(blockchain.chain.len(), 3);
-
     }
 }

@@ -1,7 +1,7 @@
-use sha2::{Sha256, Digest}; // Import the necessary traits and types
 use hex;
 use serde::{Deserialize, Serialize};
-// We will use hex encoding
+use sha2::{Digest, Sha256}; // Import the necessary traits and types
+                            // We will use hex encoding
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Block {
@@ -29,7 +29,10 @@ impl Block {
     }
 
     pub(crate) fn calculate_hash(&self) -> String {
-        let input = format!("{}{}{}{}{}", self.index, self.timestamp, self.data, self.previous_hash, self.nonce);
+        let input = format!(
+            "{}{}{}{}{}",
+            self.index, self.timestamp, self.data, self.previous_hash, self.nonce
+        );
 
         let mut hasher = Sha256::new();
         hasher.update(input);

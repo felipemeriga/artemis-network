@@ -1,21 +1,25 @@
+use crate::blockchain::Blockchain;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener};
-use crate::blockchain::Blockchain;
-use tokio::sync::Mutex;
+use tokio::net::TcpListener;
+use tokio::sync::{Mutex, RwLock};
 
 pub struct Server {
     address: String,
-    blockchain: Arc<Mutex<Blockchain>>,
+    blockchain: Arc<RwLock<Blockchain>>,
     peers: Arc<Mutex<Vec<String>>>,
 }
 
 impl Server {
-    pub fn new( blockchain: Arc<Mutex<Blockchain>>, address: String, peers: Arc<Mutex<Vec<String>>>) -> Self {
-        Self{
+    pub fn new(
+        blockchain: Arc<RwLock<Blockchain>>,
+        address: String,
+        peers: Arc<Mutex<Vec<String>>>,
+    ) -> Self {
+        Self {
             address,
             blockchain,
-            peers
+            peers,
         }
     }
 
@@ -36,7 +40,7 @@ impl Server {
                 println!("Received request: {}", request.as_ref());
 
                 if request.trim() == "get_blockchain" {
-                    let chain = blockchain.lock().await.get_chain();
+                    let chain = blockchain.read().await.get_chain();
                     let response = serde_json::to_string(&chain).unwrap();
                     socket.write_all(response.as_bytes()).await.unwrap();
                 }

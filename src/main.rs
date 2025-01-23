@@ -2,13 +2,14 @@ use crate::node::Node;
 
 mod block;
 mod blockchain;
-mod network;
-mod wallet;
-mod consensus;
-mod server;
 mod client;
-mod tests;
+mod consensus;
+mod miner;
+mod network;
 mod node;
+mod server;
+mod tests;
+mod wallet;
 
 #[tokio::main]
 async fn main() {

@@ -11,6 +11,9 @@ impl Consensus {
             block.nonce += 1;
             block.hash = block.calculate_hash();
         }
-        println!("Block mined with nonce: {} and hash: {}", block.nonce, block.hash);
+        println!(
+            "Block mined with nonce: {} and hash: {}",
+            block.nonce, block.hash
+        );
     }
 }

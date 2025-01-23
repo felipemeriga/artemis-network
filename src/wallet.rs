@@ -1,5 +1,5 @@
-use secp256k1::{Secp256k1, SecretKey, PublicKey};
 use secp256k1::rand::rngs::OsRng;
+use secp256k1::{PublicKey, Secp256k1, SecretKey};
 
 pub struct Wallet {
     pub private_key: SecretKey,

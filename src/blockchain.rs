@@ -1,7 +1,5 @@
 use crate::block::Block;
-use std::sync::{Arc, Mutex};
 use serde::{Deserialize, Serialize};
-use tokio::sync::broadcast;
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct Blockchain {
@@ -38,7 +36,7 @@ impl Blockchain {
         self.chain = new_chain;
     }
 
-    pub fn mine_new_block(&mut self, data: String) -> Block {
+    pub fn mine_new_block(&self, data: String) -> Block {
         let last_block = self.chain.last().unwrap();
         let new_index = last_block.index + 1;
         let new_timestamp = chrono::Utc::now().timestamp() as u64;
@@ -62,4 +60,3 @@ impl Blockchain {
         }
     }
 }
-

@@ -3,15 +3,15 @@ use crate::blockchain::Blockchain;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
 
 pub struct Client {
-    blockchain: Arc<Mutex<Blockchain>>,
+    blockchain: Arc<RwLock<Blockchain>>,
     peers: Arc<Mutex<Vec<String>>>,
 }
 
 impl Client {
-    pub fn new(blockchain: Arc<Mutex<Blockchain>>, peers: Arc<Mutex<Vec<String>>>) -> Self {
+    pub fn new(blockchain: Arc<RwLock<Blockchain>>, peers: Arc<Mutex<Vec<String>>>) -> Self {
         Self { blockchain, peers }
     }
 
@@ -30,7 +30,7 @@ impl Client {
                         let data = String::from_utf8_lossy(&buffer[..n]);
                         if let Ok(peer_chain) = serde_json::from_str::<Vec<Block>>(&data) {
                             println!("Received a new chain for replacing the actual one");
-                            let mut local_chain = self.blockchain.lock().await;
+                            let mut local_chain = self.blockchain.write().await;
                             // Perform consensus and merge chains
                             if peer_chain.len() > local_chain.get_chain().len() {
                                 local_chain.replace_chain(peer_chain);
