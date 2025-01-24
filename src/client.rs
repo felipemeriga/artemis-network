@@ -5,6 +5,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::{Mutex, RwLock};
 use tokio::sync::watch::Sender;
+use crate::server::Request;
 
 pub struct Client {
     blockchain: Arc<RwLock<Blockchain>>,
@@ -25,8 +26,13 @@ impl Client {
 
             for peer in peers {
                 if let Ok(mut stream) = TcpStream::connect(&peer).await {
-                    let request = "get_blockchain\n";
-                    if let Err(_) = stream.write_all(request.as_bytes()).await {
+                    let request = Request {
+                        command: "get_blockchain".to_string(),
+                        data: "".to_string(),
+                    };
+                    let marshalled_request = serde_json::to_string(&request).unwrap();
+
+                    if let Err(_) = stream.write_all(marshalled_request.as_bytes()).await {
                         continue;
                     }
 
