@@ -26,6 +26,21 @@ impl Blockchain {
         false
     }
 
+    pub fn is_valid_new_block(&self, block: &Block) -> bool {
+        if let Some(last_block) = self.chain.last() {
+            // Validate previous hash
+            if block.previous_hash != last_block.hash {
+                return false;
+            }
+            // Validate block's hash and PoW
+            if block.hash != block.calculate_hash() || !block.hash.starts_with(&"0".repeat(self.difficulty)) {
+                return false;
+            }
+            return true;
+        }
+        false
+    }
+
     pub fn validate_block(&self, block: &Block) -> bool {
         // Check if the block's hash matches the difficulty
         let target = "0".repeat(self.difficulty);

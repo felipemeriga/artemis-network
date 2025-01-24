@@ -1,8 +1,9 @@
 use crate::blockchain::Blockchain;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpListener;
+use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{Mutex, RwLock};
+use crate::block::Block;
 
 pub struct Server {
     address: String,
@@ -50,6 +51,26 @@ impl Server {
                     peers.lock().await.push(peer);
                 }
             });
+        }
+    }
+
+    pub async fn handle_new_block(&mut self, block: Block) {
+        // Validate the received block
+        let mut chain = self.blockchain.write().await;
+        if chain.is_valid_new_block(&block) {
+            println!("Appending valid block: {:?}", block);
+            chain.add_block(block.clone()); // Assume this adds without mining
+        } else {
+            println!("Invalid block received: {:?}", block);
+        }
+
+        // Broadcast the block to peers
+        let peers_list = self.peers.lock().await.clone();
+        for peer in peers_list {
+            if let Ok(mut stream) = TcpStream::connect(&peer).await {
+                let message = serde_json::to_string(&block).unwrap();
+                let _ = stream.write_all(message.as_bytes()).await;
+            }
         }
     }
 }
