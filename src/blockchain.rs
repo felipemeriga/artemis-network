@@ -16,6 +16,15 @@ impl Blockchain {
         }
     }
 
+    pub fn is_valid_chain(chain: &[Block]) -> bool {
+        for i in 1..chain.len() {
+            if chain[i].previous_hash != chain[i - 1].hash || chain[i].hash != chain[i].calculate_hash() {
+                return false;
+            }
+        }
+        true
+    }
+
     pub fn add_block(&mut self, new_block: Block) -> bool {
         // Ensure the block's previous_hash is valid
         let last_block = self.chain.last().unwrap();

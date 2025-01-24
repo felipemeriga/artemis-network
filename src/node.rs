@@ -4,7 +4,8 @@ use crate::miner::mine;
 use crate::server;
 use crate::server::Server;
 use std::sync::Arc;
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::{Mutex, RwLock, watch::{channel}};
+use crate::block::Block;
 
 pub struct Node {
     pub blockchain: Arc<RwLock<Blockchain>>,
@@ -23,8 +24,12 @@ impl Node {
         let blockchain = self.blockchain.clone();
         let peers = self.peers.clone();
 
+        let (watch_tx, watch_rx) = channel::<Option<Block>>(None);
+
+        let tx = Arc::new(Mutex::new(watch_tx));
+        let server_tx = tx.clone();
         let server_address = address.clone();
-        let mut server = Server::new(blockchain, server_address, peers);
+        let mut server = Server::new(blockchain, server_address, peers, server_tx);
         // Spawn server task
         let server_handle = tokio::spawn(async move {
             server.run_server().await;
@@ -33,8 +38,9 @@ impl Node {
         // Spawn a client task for syncing
         let blockchain = self.blockchain.clone();
         let peers = self.peers.clone();
+        let client_tx = tx.clone();
 
-        let mut client = Client::new(blockchain, peers);
+        let mut client = Client::new(blockchain, peers, client_tx);
         let client_handle = tokio::spawn(async move {
             client.sync_with_peers().await;
         });

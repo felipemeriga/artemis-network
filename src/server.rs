@@ -3,12 +3,14 @@ use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{Mutex, RwLock};
+use tokio::sync::watch::Sender;
 use crate::block::Block;
 
 pub struct Server {
     address: String,
     blockchain: Arc<RwLock<Blockchain>>,
     peers: Arc<Mutex<Vec<String>>>,
+    watch_tx: Arc<Mutex<Sender<Option<Block>>>>,
 }
 
 impl Server {
@@ -16,11 +18,13 @@ impl Server {
         blockchain: Arc<RwLock<Blockchain>>,
         address: String,
         peers: Arc<Mutex<Vec<String>>>,
+        watch_tx: Arc<Mutex<Sender<Option<Block>>>>
     ) -> Self {
         Self {
             address,
             blockchain,
             peers,
+            watch_tx
         }
     }
 
@@ -46,6 +50,10 @@ impl Server {
                     socket.write_all(response.as_bytes()).await.unwrap();
                 }
 
+                if request.trim() == "new_block" {
+                    // TODO - Handle call new block
+                }
+
                 if request.starts_with("add_peer") {
                     let peer = request.trim()[9..].to_string();
                     peers.lock().await.push(peer);
@@ -60,17 +68,17 @@ impl Server {
         if chain.is_valid_new_block(&block) {
             println!("Appending valid block: {:?}", block);
             chain.add_block(block.clone()); // Assume this adds without mining
+
+            // Broadcast the block to peers only if valid
+            let peers_list = self.peers.lock().await.clone();
+            for peer in peers_list {
+                if let Ok(mut stream) = TcpStream::connect(&peer).await {
+                    let message = serde_json::to_string(&block).unwrap();
+                    let _ = stream.write_all(message.as_bytes()).await;
+                }
+            }
         } else {
             println!("Invalid block received: {:?}", block);
-        }
-
-        // Broadcast the block to peers
-        let peers_list = self.peers.lock().await.clone();
-        for peer in peers_list {
-            if let Ok(mut stream) = TcpStream::connect(&peer).await {
-                let message = serde_json::to_string(&block).unwrap();
-                let _ = stream.write_all(message.as_bytes()).await;
-            }
         }
     }
 }
