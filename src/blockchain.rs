@@ -12,13 +12,15 @@ impl Blockchain {
         let genesis_block = Block::new(0, 0, "Genesis Block".to_string(), "0".to_string());
         Blockchain {
             chain: vec![genesis_block],
-            difficulty: 4, // Set the PoW difficulty (e.g., 4 leading zeros)
+            difficulty: 10, // Set the PoW difficulty (e.g., 4 leading zeros)
         }
     }
 
     pub fn is_valid_chain(chain: &[Block]) -> bool {
         for i in 1..chain.len() {
-            if chain[i].previous_hash != chain[i - 1].hash || chain[i].hash != chain[i].calculate_hash() {
+            if chain[i].previous_hash != chain[i - 1].hash
+                || chain[i].hash != chain[i].calculate_hash()
+            {
                 return false;
             }
         }
@@ -42,7 +44,9 @@ impl Blockchain {
                 return false;
             }
             // Validate block's hash and PoW
-            if block.hash != block.calculate_hash() || !block.hash.starts_with(&"0".repeat(self.difficulty)) {
+            if block.hash != block.calculate_hash()
+                || !block.hash.starts_with(&"0".repeat(self.difficulty))
+            {
                 return false;
             }
             return true;
@@ -61,13 +65,19 @@ impl Blockchain {
     }
 
     pub fn mine_new_block(&self, data: String) -> Block {
+        let (mut mined_block, difficult) = self.prepare_block_for_mining(data);
+        mined_block.mine(difficult);
+
+        mined_block
+    }
+
+    pub fn prepare_block_for_mining(&self, data: String) -> (Block, usize) {
         let last_block = self.chain.last().unwrap();
         let new_index = last_block.index + 1;
         let new_timestamp = chrono::Utc::now().timestamp() as u64;
         let new_block = Block::new(new_index, new_timestamp, data, last_block.hash.clone());
         let mut mined_block = new_block;
-        mined_block.mine(self.difficulty); // Mine the block
-        mined_block
+        (mined_block, self.difficulty)
     }
 
     pub fn get_last_block(&self) -> &Block {

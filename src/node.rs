@@ -2,7 +2,7 @@ use crate::blockchain::Blockchain;
 use crate::client::Client;
 use crate::miner::mine;
 use crate::server;
-use crate::server::Server;
+use crate::server::{run_server};
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock, mpsc::channel};
 use crate::block::Block;
@@ -29,10 +29,10 @@ impl Node {
         let tx = Arc::new(Mutex::new(block_tx));
         let server_tx = tx.clone();
         let server_address = address.clone();
-        let mut server = Server::new(blockchain, server_address, peers, server_tx);
+
         // Spawn server task
         let server_handle = tokio::spawn(async move {
-            server.run_server().await;
+            run_server(blockchain, server_address, peers, server_tx).await;
         });
 
         // Spawn a client task for syncing
@@ -40,20 +40,21 @@ impl Node {
         let peers = self.peers.clone();
         let client_tx = tx.clone();
 
-        let mut client = Client::new(blockchain, peers, client_tx);
-        let client_handle = tokio::spawn(async move {
-            client.sync_with_peers().await;
-        });
+        // let mut client = Client::new(blockchain, peers, client_tx);
+        // let client_handle = tokio::spawn(async move {
+        //     client.sync_with_peers().await;
+        // });
 
         let blockchain = self.blockchain.clone();
+        let peers = self.peers.clone();
         // Spawn a task for mining new blocks
-        let miner_handle = tokio::spawn(async move {
-            mine(blockchain, block_rx).await;
-        });
+        // let miner_handle = tokio::spawn(async move {
+        //     mine(blockchain, peers, block_rx).await;
+        // });
 
         println!("Node started at {}", address);
 
         // Wait for both client and server to finish
-        let _ = tokio::try_join!(server_handle, client_handle, miner_handle);
+        let _ = tokio::try_join!(server_handle);
     }
 }

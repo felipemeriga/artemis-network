@@ -1,25 +1,32 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
 use std::sync::Arc;
-use tokio::sync::{mpsc::Receiver, RwLock};
+use tokio::sync::{mpsc::Receiver, Mutex, RwLock};
 use tokio::time::{sleep, Duration};
 use tokio::select;
 
-pub async fn mine(blockchain: Arc<RwLock<Blockchain>>, mut block_rx: Receiver<Option<Block>>) {
+pub async fn mine(blockchain: Arc<RwLock<Blockchain>>, peers: Arc<Mutex<Vec<String>>>, mut block_rx: Receiver<Option<Block>>) {
     loop {
         let data = format!("Block at {}", chrono::Utc::now());
         let mut mined_block: Option<Block> = None;
 
         // Concurrently mine and watch for new blocks
-        tokio::select! {
+        select! {
             // Mining logic
             _ = async {
-                // Access the blockchain read lock to get necessary details for mining
-                let blockchain_read = blockchain.read().await;
+
+                        // Part 1: Extract necessary data while holding the read lock
+                let (mut prepared_block, difficult);
+                let mining_data = data.clone();
+                {
+                    let blockchain_read = blockchain.read().await;
+                    (prepared_block, difficult) = blockchain_read.prepare_block_for_mining(mining_data); // Assume we create this method
+                } // The read lock is released here
+
 
                 println!("Mining a new block with data: {}", data);
-                let new_block = blockchain_read.mine_new_block(data);
-                mined_block = Some(new_block); // Mining complete
+                prepared_block.mine(difficult);
+                mined_block = Some(prepared_block); // Mining complete
             } => {},
 
             // Listen for new blocks from the network
@@ -47,6 +54,9 @@ pub async fn mine(blockchain: Arc<RwLock<Blockchain>>, mut block_rx: Receiver<Op
                 println!("Mined block is invalid due to an update. Restarting...");
                 continue; // Restart the mining loop
             }
+
+            println!("broadcasting new block to peers");
+            // Server::broadcast_new_block(&new_block, peers.clone()).await;
         }
 
         // Wait before starting to mine the next block
