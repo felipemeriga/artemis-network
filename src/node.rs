@@ -4,7 +4,7 @@ use crate::miner::mine;
 use crate::server;
 use crate::server::Server;
 use std::sync::Arc;
-use tokio::sync::{Mutex, RwLock, watch::{channel}};
+use tokio::sync::{Mutex, RwLock, mpsc::channel};
 use crate::block::Block;
 
 pub struct Node {
@@ -24,9 +24,9 @@ impl Node {
         let blockchain = self.blockchain.clone();
         let peers = self.peers.clone();
 
-        let (watch_tx, watch_rx) = channel::<Option<Block>>(None);
+        let (block_tx, block_rx) = channel::<Option<Block>>(20);
 
-        let tx = Arc::new(Mutex::new(watch_tx));
+        let tx = Arc::new(Mutex::new(block_tx));
         let server_tx = tx.clone();
         let server_address = address.clone();
         let mut server = Server::new(blockchain, server_address, peers, server_tx);
@@ -48,7 +48,7 @@ impl Node {
         let blockchain = self.blockchain.clone();
         // Spawn a task for mining new blocks
         let miner_handle = tokio::spawn(async move {
-            mine(blockchain).await;
+            mine(blockchain, block_rx).await;
         });
 
         println!("Node started at {}", address);

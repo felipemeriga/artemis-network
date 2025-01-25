@@ -2,16 +2,16 @@ use crate::block::Block;
 use crate::blockchain::Blockchain;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use tokio::sync::mpsc::Sender;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::watch::Sender;
 use tokio::sync::{Mutex, RwLock};
 
 pub struct Server {
     address: String,
     blockchain: Arc<RwLock<Blockchain>>,
     peers: Arc<Mutex<Vec<String>>>,
-    watch_tx: Arc<Mutex<Sender<Option<Block>>>>,
+    block_tx: Arc<Mutex<Sender<Option<Block>>>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -25,13 +25,13 @@ impl Server {
         blockchain: Arc<RwLock<Blockchain>>,
         address: String,
         peers: Arc<Mutex<Vec<String>>>,
-        watch_tx: Arc<Mutex<Sender<Option<Block>>>>,
+        block_tx: Arc<Mutex<Sender<Option<Block>>>>,
     ) -> Self {
         Self {
             address,
             blockchain,
             peers,
-            watch_tx,
+            block_tx,
         }
     }
 
