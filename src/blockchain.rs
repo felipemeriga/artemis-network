@@ -12,7 +12,7 @@ impl Blockchain {
         let genesis_block = Block::new(0, 0, "Genesis Block".to_string(), "0".to_string());
         Blockchain {
             chain: vec![genesis_block],
-            difficulty: 10, // Set the PoW difficulty (e.g., 4 leading zeros)
+            difficulty: 2, // Set the PoW difficulty (e.g., 4 leading zeros)
         }
     }
 
@@ -43,8 +43,10 @@ impl Blockchain {
             if block.previous_hash != last_block.hash {
                 return false;
             }
+
+            let calculated_hash = block.calculate_hash();
             // Validate block's hash and PoW
-            if block.hash != block.calculate_hash()
+            if block.hash != calculated_hash
                 || !block.hash.starts_with(&"0".repeat(self.difficulty))
             {
                 return false;
@@ -76,7 +78,7 @@ impl Blockchain {
         let new_index = last_block.index + 1;
         let new_timestamp = chrono::Utc::now().timestamp() as u64;
         let new_block = Block::new(new_index, new_timestamp, data, last_block.hash.clone());
-        let mut mined_block = new_block;
+        let mined_block = new_block;
         (mined_block, self.difficulty)
     }
 

@@ -1,11 +1,9 @@
-use crate::blockchain::Blockchain;
-use crate::client::Client;
-use crate::miner::mine;
-use crate::server;
-use crate::server::{run_server};
-use std::sync::Arc;
-use tokio::sync::{Mutex, RwLock, mpsc::channel};
 use crate::block::Block;
+use crate::blockchain::Blockchain;
+use crate::miner::mine;
+use crate::server::run_server;
+use std::sync::Arc;
+use tokio::sync::{mpsc::channel, Mutex, RwLock};
 
 pub struct Node {
     pub blockchain: Arc<RwLock<Blockchain>>,
@@ -48,13 +46,13 @@ impl Node {
         let blockchain = self.blockchain.clone();
         let peers = self.peers.clone();
         // Spawn a task for mining new blocks
-        // let miner_handle = tokio::spawn(async move {
-        //     mine(blockchain, peers, block_rx).await;
-        // });
+        let miner_handle = tokio::spawn(async move {
+            mine(blockchain, peers, block_rx).await;
+        });
 
-        println!("Node started at {}", address);
+        println!("[NODE] started at {}", address);
 
         // Wait for both client and server to finish
-        let _ = tokio::try_join!(server_handle);
+        let _ = tokio::try_join!(server_handle, miner_handle);
     }
 }

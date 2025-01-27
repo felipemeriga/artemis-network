@@ -51,4 +51,13 @@ impl Block {
         }
         println!("Block mined! Nonce: {}, Hash: {}", self.nonce, self.hash);
     }
+
+    pub fn is_valid(&self, difficulty: usize) -> bool {
+        self.hash.starts_with(&"0".repeat(difficulty))
+    }
+
+    pub fn mine_step(&mut self) {
+        self.nonce += 1;
+        self.hash = self.calculate_hash();
+    }
 }

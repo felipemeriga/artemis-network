@@ -1,44 +1,48 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
 use std::sync::Arc;
-use tokio::sync::{mpsc::Receiver, Mutex, RwLock};
-use tokio::time::{sleep, Duration};
+use std::time::Instant;
 use tokio::select;
+use tokio::sync::{mpsc::Receiver, Mutex, RwLock};
+use tokio::time::Duration;
 
-pub async fn mine(blockchain: Arc<RwLock<Blockchain>>, peers: Arc<Mutex<Vec<String>>>, mut block_rx: Receiver<Option<Block>>) {
+pub async fn mine(
+    blockchain: Arc<RwLock<Blockchain>>,
+    peers: Arc<Mutex<Vec<String>>>,
+    mut block_rx: Receiver<Option<Block>>,
+) {
     loop {
         let data = format!("Block at {}", chrono::Utc::now());
         let mut mined_block: Option<Block> = None;
 
-        // Concurrently mine and watch for new blocks
-        select! {
-            // Mining logic
-            _ = async {
+        // Prepare a new block for mining
+        let (mut candidate_block, difficulty) = {
+            let blockchain_read = blockchain.read().await;
+            blockchain_read.prepare_block_for_mining(data.clone())
+        };
 
-                        // Part 1: Extract necessary data while holding the read lock
-                let (mut prepared_block, difficult);
-                let mining_data = data.clone();
-                {
-                    let blockchain_read = blockchain.read().await;
-                    (prepared_block, difficult) = blockchain_read.prepare_block_for_mining(mining_data); // Assume we create this method
-                } // The read lock is released here
+        println!("[MINER] Starting mining with difficulty: {}", difficulty);
+        let start_time = Instant::now();
 
+        loop {
+            // Incrementally mine
+            candidate_block.mine_step();
 
-                println!("Mining a new block with data: {}", data);
-                prepared_block.mine(difficult);
-                mined_block = Some(prepared_block); // Mining complete
-            } => {},
+            // Check if the block meets the difficulty
+            if candidate_block.is_valid(difficulty) {
+                mined_block = Some(candidate_block.clone());
+                break;
+            }
 
-            // Listen for new blocks from the network
-            Some(received_block) = block_rx.recv() => {
-                if let Some(received_block) = received_block {
-                    println!("New block received: {:?}. Halting mining and restarting...", received_block);
-                    // Here we don't need to append the received block, since it's a blockchain behind an Arc<Mutex>>
-                    // The block will be appended right after the server task receives the update
-
-                    // Restart mining with the updated blockchain state
-                    continue;
+            select! {
+                // If a new block is received from the network
+                Some(new_block) = block_rx.recv() => {
+                    println!("[MINER] New block received: {:?}. Restarting mining...", new_block);
+                    break; // Exit the mining loop and restart
                 }
+
+                // Simulate mining time to let other tasks execute
+                _ = tokio::time::sleep(Duration::from_millis(10)) => {}
             }
         }
 
@@ -49,17 +53,22 @@ pub async fn mine(blockchain: Arc<RwLock<Blockchain>>, peers: Arc<Mutex<Vec<Stri
             // Ensure the chain hasn't been updated since mining began
             if blockchain_write.is_valid_new_block(&new_block) {
                 blockchain_write.chain.push(new_block.clone());
-                println!("New block mined and added to the blockchain: {:?}", new_block);
+                println!(
+                    "[MINER] Mining complete! Block added to blockchain: {:?} (Elapsed: {:?})",
+                    new_block,
+                    start_time.elapsed()
+                );
             } else {
-                println!("Mined block is invalid due to an update. Restarting...");
+                println!("[MINER] Mining became invalid due to a chain update.");
                 continue; // Restart the mining loop
             }
 
-            println!("broadcasting new block to peers");
+            // println!("broadcasting new block to peers");
             // Server::broadcast_new_block(&new_block, peers.clone()).await;
         }
 
-        // Wait before starting to mine the next block
-        sleep(Duration::from_secs(1)).await; // Adjustable based on network needs
+        // Reset and restart on interruption or completion
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        println!("[MINER] Restarting mining...");
     }
 }

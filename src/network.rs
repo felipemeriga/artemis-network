@@ -1,5 +1,5 @@
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::TcpListener;
 
 pub async fn start_node(port: u16) -> tokio::io::Result<()> {
     let listener = TcpListener::bind(("127.0.0.1", port)).await?;

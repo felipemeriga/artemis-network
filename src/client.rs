@@ -1,11 +1,11 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
+use crate::server::Request;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
-use tokio::sync::{Mutex, RwLock};
 use tokio::sync::mpsc::Sender;
-use crate::server::Request;
+use tokio::sync::{Mutex, RwLock};
 
 pub struct Client {
     blockchain: Arc<RwLock<Blockchain>>,
@@ -14,8 +14,16 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(blockchain: Arc<RwLock<Blockchain>>, peers: Arc<Mutex<Vec<String>>>, watch_tx: Arc<Mutex<Sender<Option<Block>>>>) -> Self {
-        Self { blockchain, peers, block_tx: watch_tx }
+    pub fn new(
+        blockchain: Arc<RwLock<Blockchain>>,
+        peers: Arc<Mutex<Vec<String>>>,
+        watch_tx: Arc<Mutex<Sender<Option<Block>>>>,
+    ) -> Self {
+        Self {
+            blockchain,
+            peers,
+            block_tx: watch_tx,
+        }
     }
 
     pub async fn sync_with_peers(&mut self) {
@@ -41,7 +49,9 @@ impl Client {
                         let data = String::from_utf8_lossy(&buffer[..n]);
                         if let Ok(peer_chain) = serde_json::from_str::<Vec<Block>>(&data) {
                             println!("Received a new chain for replacing the actual one");
-                            if peer_chain.len() > max_length && Blockchain::is_valid_chain(&peer_chain) {
+                            if peer_chain.len() > max_length
+                                && Blockchain::is_valid_chain(&peer_chain)
+                            {
                                 max_length = peer_chain.len();
                                 longest_chain = Some(peer_chain);
                             }
@@ -54,7 +64,12 @@ impl Client {
                 println!("Replacing chain with longer chain from peer.");
                 self.blockchain.write().await.replace_chain(new_chain);
                 // notify miners that a new chain has been found
-                self.block_tx.lock().await.send(Some(self.blockchain.read().await.get_last_block().clone())).await.expect("could not send message");
+                self.block_tx
+                    .lock()
+                    .await
+                    .send(Some(self.blockchain.read().await.get_last_block().clone()))
+                    .await
+                    .expect("could not send message");
             } else {
                 println!("Local chain is the longest.");
             }
