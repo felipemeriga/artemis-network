@@ -1,5 +1,6 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
+use crate::miner_info;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::select;
@@ -21,7 +22,7 @@ pub async fn mine(
             blockchain_read.prepare_block_for_mining(data.clone())
         };
 
-        println!("[MINER] Starting mining with difficulty: {}", difficulty);
+        miner_info!("Starting mining with difficulty: {}", difficulty);
         let start_time = Instant::now();
 
         loop {
@@ -37,7 +38,7 @@ pub async fn mine(
             select! {
                 // If a new block is received from the network
                 Some(new_block) = block_rx.recv() => {
-                    println!("[MINER] New block received: {:?}. Restarting mining...", new_block);
+                    miner_info!("New block received: {:?}. Restarting mining...", new_block);
                     break; // Exit the mining loop and restart
                 }
 
@@ -53,13 +54,13 @@ pub async fn mine(
             // Ensure the chain hasn't been updated since mining began
             if blockchain_write.is_valid_new_block(&new_block) {
                 blockchain_write.chain.push(new_block.clone());
-                println!(
-                    "[MINER] Mining complete! Block added to blockchain: {:?} (Elapsed: {:?})",
+                miner_info!(
+                    "Mining complete! Block added to blockchain: {:?} (Elapsed: {:?})",
                     new_block,
                     start_time.elapsed()
                 );
             } else {
-                println!("[MINER] Mining became invalid due to a chain update.");
+                miner_info!("Mining became invalid due to a chain update.");
                 continue; // Restart the mining loop
             }
 
@@ -69,6 +70,6 @@ pub async fn mine(
 
         // Reset and restart on interruption or completion
         tokio::time::sleep(Duration::from_secs(1)).await;
-        println!("[MINER] Restarting mining...");
+        miner_info!("Restarting mining...");
     }
 }

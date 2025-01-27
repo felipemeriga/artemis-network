@@ -1,5 +1,6 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
+use crate::{server_error, server_info, server_warn};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -21,14 +22,13 @@ pub async fn run_server(
 ) {
     let listener = TcpListener::bind(address.clone()).await.unwrap();
 
-    println!("[SERVER] listening on {}", address);
-
     let sever_handler = ServerHandler {
         blockchain,
         peers,
         block_tx,
     };
 
+    server_info!("Listening on {}", address);
     while let Ok((stream, _)) = listener.accept().await {
         let handler = sever_handler.clone();
         tokio::spawn(async move {
@@ -55,7 +55,7 @@ impl ServerHandler {
                         if let Ok(block) = serde_json::from_str::<Block>(&req.data) {
                             self.handle_new_block(block).await;
                         } else {
-                            eprintln!("[SERVER] Invalid block received.");
+                            server_warn!("Invalid block received")
                         }
                     }
                     "get_blockchain" => {
@@ -63,10 +63,10 @@ impl ServerHandler {
                         let response = serde_json::to_string(&chain).unwrap();
                         let _ = stream.write_all(response.as_bytes()).await;
                     }
-                    _ => eprintln!("[SERVER] Unknown command: {}", req.command),
+                    _ => server_error!("[SERVER] Unknown command: {}", req.command),
                 }
             } else {
-                eprintln!("[SERVER] Failed to parse request.");
+                server_error!("[SERVER] Failed to parse request.");
             }
         }
     }
@@ -76,11 +76,11 @@ impl ServerHandler {
             // Acquire the write lock and validate the block
             let mut chain = self.blockchain.write().await;
             if chain.is_valid_new_block(&block) {
-                println!("[SERVER] Appending valid block: {:?}", block);
+                server_info!("[SERVER] Appending valid block: {:?}", block);
                 chain.add_block(block.clone()); // Append the block
                 true // Block is valid
             } else {
-                println!("[SERVER] Invalid block received: {:?}", block);
+                server_warn!("[SERVER] Invalid block received: {:?}", block);
                 false // Block is invalid
             }
             // The lock is released here since it goes out of scope
@@ -110,7 +110,7 @@ impl ServerHandler {
 
                 let serialized_request = serde_json::to_string(&request).unwrap();
                 if let Err(e) = stream.write_all(serialized_request.as_bytes()).await {
-                    eprintln!("[SERVER] Failed to send block to {}: {}", peer, e);
+                    server_error!("[SERVER] Failed to send block to {}: {}", peer, e);
                 }
             }
         }
