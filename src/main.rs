@@ -4,7 +4,7 @@ extern crate log;
 mod block;
 mod blockchain;
 mod broadcaster;
-mod client;
+mod sync;
 mod logger;
 mod miner;
 mod node;

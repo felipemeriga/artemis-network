@@ -8,13 +8,13 @@ use tokio::net::TcpStream;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::{Mutex, RwLock};
 
-pub struct Client {
+pub struct Sync {
     blockchain: Arc<RwLock<Blockchain>>,
     peers: Arc<Mutex<Vec<String>>>,
     block_tx: Arc<Mutex<Sender<Option<Block>>>>,
 }
 
-impl Client {
+impl Sync {
     pub fn new(
         blockchain: Arc<RwLock<Blockchain>>,
         peers: Arc<Mutex<Vec<String>>>,
@@ -45,11 +45,10 @@ impl Client {
                         continue;
                     }
 
-                    let mut buffer = [0; 1024];
+                    let mut buffer = [0; 100000];
                     if let Ok(n) = stream.read(&mut buffer).await {
                         let data = String::from_utf8_lossy(&buffer[..n]);
                         if let Ok(peer_chain) = serde_json::from_str::<Vec<Block>>(&data) {
-                            sync_info!("Received a new chain for replacing the actual one");
                             if peer_chain.len() > max_length
                                 && Blockchain::is_valid_chain(&peer_chain)
                             {

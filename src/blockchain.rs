@@ -56,11 +56,11 @@ impl Blockchain {
         false
     }
 
-    pub fn validate_block(&self, block: &Block) -> bool {
-        // Check if the block's hash matches the difficulty
-        let target = "0".repeat(self.difficulty);
-        block.hash.starts_with(&target)
-    }
+    // pub fn validate_block(&self, block: &Block) -> bool {
+    //     // Check if the block's hash matches the difficulty
+    //     let target = "0".repeat(self.difficulty);
+    //     block.hash.starts_with(&target)
+    // }
 
     pub fn replace_chain(&mut self, new_chain: Vec<Block>) {
         self.chain = new_chain;

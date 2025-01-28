@@ -39,7 +39,7 @@ pub async fn mine(
             select! {
                 // If a new block is received from the network
                 Some(new_block) = block_rx.recv() => {
-                    miner_info!("New block received: {:?}", new_block);
+                    miner_info!("Received valid updated state during mining, aborting the current process");
                     break; // Exit the mining loop and restart
                 }
 
