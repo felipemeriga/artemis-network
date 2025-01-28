@@ -43,8 +43,10 @@ pub async fn mine(
                     break; // Exit the mining loop and restart
                 }
 
-                // Simulate mining time to let other tasks execute
-                _ = tokio::time::sleep(Duration::from_millis(10)) => {}
+                // Simulate mining time to let other tasks execute, and adding delay to the process
+                // use this, when you need to test concurrent tasks against mining process, without having
+                // this process to mine too many blocks
+                // _ = tokio::time::sleep(Duration::from_millis(10)) => {}
             }
         }
 
