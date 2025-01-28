@@ -39,14 +39,15 @@ pub async fn mine(
             select! {
                 // If a new block is received from the network
                 Some(new_block) = block_rx.recv() => {
-                    miner_info!("New block received: {:?}. Restarting mining...", new_block);
+                    miner_info!("New block received: {:?}", new_block);
                     break; // Exit the mining loop and restart
                 }
 
-                // Simulate mining time to let other tasks execute, and adding delay to the process
-                // use this, when you need to test concurrent tasks against mining process, without having
-                // this process to mine too many blocks
-                // _ = tokio::time::sleep(Duration::from_millis(10)) => {}
+                // Simulate mining time to let other tasks execute, uncomment this for making the mining
+                // process slower
+                // _ = tokio::time::sleep(Duration::from_nanos(10)) => {}
+
+                _ = tokio::task::yield_now() => {}
             }
         }
 
@@ -65,7 +66,7 @@ pub async fn mine(
                 broadcaster
                     .lock()
                     .await
-                    .broadcast_new_block(&new_block)
+                    .broadcast_new_block(&new_block, None)
                     .await;
             } else {
                 miner_info!("Mining became invalid due to a chain update.");

@@ -15,10 +15,16 @@ impl Broadcaster {
         Self { peers }
     }
 
-    pub async fn broadcast_new_block(&self, block: &Block) {
+    pub async fn broadcast_new_block(&self, block: &Block, excluded_peers: Option<Vec<String>>) {
         broadcaster_info!("broadcasting new block to peers");
         let peers_list = self.peers.lock().await.clone();
+        let excluded_peers = excluded_peers.unwrap_or_default();
         for peer in peers_list {
+            if excluded_peers.contains(&peer) {
+                broadcaster_info!("Discarding peer {} from broadcasting", peer);
+                continue;
+            }
+
             if let Ok(mut stream) = TcpStream::connect(&peer).await {
                 let request = Request {
                     command: "new_block".to_string(),

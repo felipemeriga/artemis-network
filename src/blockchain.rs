@@ -12,7 +12,7 @@ impl Blockchain {
         let genesis_block = Block::new(0, 0, "Genesis Block".to_string(), "0".to_string());
         Blockchain {
             chain: vec![genesis_block],
-            difficulty: 2, // Set the PoW difficulty (e.g., 4 leading zeros)
+            difficulty: 5, // Set the PoW difficulty (e.g., 4 leading zeros)
         }
     }
 

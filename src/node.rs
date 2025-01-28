@@ -13,10 +13,10 @@ pub struct Node {
 }
 
 impl Node {
-    pub fn new() -> Self {
+    pub fn new(peers: Vec<String>) -> Self {
         Node {
             blockchain: Arc::new(RwLock::new(Blockchain::new())),
-            peers: Arc::new(Mutex::new(vec!["127.0.0.1:8080".parse().unwrap()])),
+            peers: Arc::new(Mutex::new(peers)),
         }
     }
 
@@ -54,7 +54,7 @@ impl Node {
             mine(blockchain, miner_broadcaster, block_rx).await;
         });
 
-        node_info!("[NODE] started at {}", address);
+        node_info!("started at {}", address);
 
         // Wait for both client and server to finish
         let _ = tokio::try_join!(server_handle, miner_handle);
