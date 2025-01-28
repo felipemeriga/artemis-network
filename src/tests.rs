@@ -18,4 +18,12 @@ mod tests {
         }
         assert_eq!(blockchain.chain.len(), 3);
     }
+
+
+    #[test]
+    fn create_wallet() {
+        let wallet = crate::wallet::Wallet::new();
+        let address = wallet.address();
+        assert_eq!(address.len(), 64);
+    }
 }
