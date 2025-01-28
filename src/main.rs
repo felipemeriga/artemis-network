@@ -3,11 +3,10 @@ extern crate log;
 
 mod block;
 mod blockchain;
+mod broadcaster;
 mod client;
-mod consensus;
 mod logger;
 mod miner;
-mod network;
 mod node;
 mod server;
 mod tests;

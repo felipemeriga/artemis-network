@@ -1,6 +1,8 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
+use crate::broadcaster::Broadcaster;
 use crate::miner::mine;
+use crate::node_info;
 use crate::server::run_server;
 use std::sync::Arc;
 use tokio::sync::{mpsc::channel, Mutex, RwLock};
@@ -27,30 +29,32 @@ impl Node {
         let tx = Arc::new(Mutex::new(block_tx));
         let server_tx = tx.clone();
         let server_address = address.clone();
+        let broadcaster = Arc::new(Mutex::new(Broadcaster::new(peers)));
 
+        let server_broadcaster = broadcaster.clone();
         // Spawn server task
         let server_handle = tokio::spawn(async move {
-            run_server(blockchain, server_address, peers, server_tx).await;
+            run_server(blockchain, server_address, server_tx, server_broadcaster).await;
         });
 
         // Spawn a client task for syncing
-        let blockchain = self.blockchain.clone();
-        let peers = self.peers.clone();
-        let client_tx = tx.clone();
+        // let blockchain = self.blockchain.clone();
+        // let peers = self.peers.clone();
+        // let client_tx = tx.clone();
+        //
+        // // let mut client = Client::new(blockchain, peers, client_tx);
+        // // let client_handle = tokio::spawn(async move {
+        // //     client.sync_with_peers().await;
+        // // });
 
-        // let mut client = Client::new(blockchain, peers, client_tx);
-        // let client_handle = tokio::spawn(async move {
-        //     client.sync_with_peers().await;
-        // });
-
         let blockchain = self.blockchain.clone();
-        let peers = self.peers.clone();
+        let miner_broadcaster = broadcaster.clone();
         // Spawn a task for mining new blocks
         let miner_handle = tokio::spawn(async move {
-            mine(blockchain, peers, block_rx).await;
+            mine(blockchain, miner_broadcaster, block_rx).await;
         });
 
-        println!("[NODE] started at {}", address);
+        node_info!("[NODE] started at {}", address);
 
         // Wait for both client and server to finish
         let _ = tokio::try_join!(server_handle, miner_handle);

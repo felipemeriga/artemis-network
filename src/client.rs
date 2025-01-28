@@ -1,6 +1,7 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
 use crate::server::Request;
+use crate::sync_info;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
@@ -48,7 +49,7 @@ impl Client {
                     if let Ok(n) = stream.read(&mut buffer).await {
                         let data = String::from_utf8_lossy(&buffer[..n]);
                         if let Ok(peer_chain) = serde_json::from_str::<Vec<Block>>(&data) {
-                            println!("Received a new chain for replacing the actual one");
+                            sync_info!("Received a new chain for replacing the actual one");
                             if peer_chain.len() > max_length
                                 && Blockchain::is_valid_chain(&peer_chain)
                             {
@@ -61,7 +62,7 @@ impl Client {
             }
 
             if let Some(new_chain) = longest_chain {
-                println!("Replacing chain with longer chain from peer.");
+                sync_info!("Replacing chain with longer chain from peer.");
                 self.blockchain.write().await.replace_chain(new_chain);
                 // notify miners that a new chain has been found
                 self.block_tx
@@ -71,7 +72,7 @@ impl Client {
                     .await
                     .expect("could not send message");
             } else {
-                println!("Local chain is the longest.");
+                sync_info!("Local chain is the longest.");
             }
 
             // Sleep for some time before the next sync

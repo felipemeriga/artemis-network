@@ -1,5 +1,6 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
+use crate::broadcaster::Broadcaster;
 use crate::miner_info;
 use std::sync::Arc;
 use std::time::Instant;
@@ -9,7 +10,7 @@ use tokio::time::Duration;
 
 pub async fn mine(
     blockchain: Arc<RwLock<Blockchain>>,
-    peers: Arc<Mutex<Vec<String>>>,
+    broadcaster: Arc<Mutex<Broadcaster>>,
     mut block_rx: Receiver<Option<Block>>,
 ) {
     loop {
@@ -59,13 +60,15 @@ pub async fn mine(
                     new_block,
                     start_time.elapsed()
                 );
+                broadcaster
+                    .lock()
+                    .await
+                    .broadcast_new_block(&new_block)
+                    .await;
             } else {
                 miner_info!("Mining became invalid due to a chain update.");
                 continue; // Restart the mining loop
             }
-
-            // println!("broadcasting new block to peers");
-            // Server::broadcast_new_block(&new_block, peers.clone()).await;
         }
 
         // Reset and restart on interruption or completion
