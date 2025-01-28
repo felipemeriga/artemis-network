@@ -4,6 +4,7 @@ use crate::broadcaster::Broadcaster;
 use crate::miner::mine;
 use crate::node_info;
 use crate::server::run_server;
+use crate::sync::Sync;
 use std::sync::Arc;
 use tokio::sync::{mpsc::channel, Mutex, RwLock};
 
@@ -13,10 +14,10 @@ pub struct Node {
 }
 
 impl Node {
-    pub fn new() -> Self {
+    pub fn new(peers: Vec<String>) -> Self {
         Node {
             blockchain: Arc::new(RwLock::new(Blockchain::new())),
-            peers: Arc::new(Mutex::new(vec!["127.0.0.1:8080".parse().unwrap()])),
+            peers: Arc::new(Mutex::new(peers)),
         }
     }
 
@@ -38,14 +39,14 @@ impl Node {
         });
 
         // Spawn a client task for syncing
-        // let blockchain = self.blockchain.clone();
-        // let peers = self.peers.clone();
-        // let client_tx = tx.clone();
-        //
-        // // let mut client = Client::new(blockchain, peers, client_tx);
-        // // let client_handle = tokio::spawn(async move {
-        // //     client.sync_with_peers().await;
-        // // });
+        let blockchain = self.blockchain.clone();
+        let peers = self.peers.clone();
+        let sync_tx = tx.clone();
+
+        let mut sync = Sync::new(blockchain, peers, sync_tx);
+        let sync_handle = tokio::spawn(async move {
+            sync.sync_with_peers().await;
+        });
 
         let blockchain = self.blockchain.clone();
         let miner_broadcaster = broadcaster.clone();
@@ -54,9 +55,9 @@ impl Node {
             mine(blockchain, miner_broadcaster, block_rx).await;
         });
 
-        node_info!("[NODE] started at {}", address);
+        node_info!("started at {}", address);
 
         // Wait for both client and server to finish
-        let _ = tokio::try_join!(server_handle, miner_handle);
+        let _ = tokio::try_join!(server_handle, miner_handle, sync_handle);
     }
 }

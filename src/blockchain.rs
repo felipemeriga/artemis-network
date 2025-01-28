@@ -12,7 +12,7 @@ impl Blockchain {
         let genesis_block = Block::new(0, 0, "Genesis Block".to_string(), "0".to_string());
         Blockchain {
             chain: vec![genesis_block],
-            difficulty: 2, // Set the PoW difficulty (e.g., 4 leading zeros)
+            difficulty: 5, // Set the PoW difficulty (e.g., 4 leading zeros)
         }
     }
 
@@ -56,11 +56,11 @@ impl Blockchain {
         false
     }
 
-    pub fn validate_block(&self, block: &Block) -> bool {
-        // Check if the block's hash matches the difficulty
-        let target = "0".repeat(self.difficulty);
-        block.hash.starts_with(&target)
-    }
+    // pub fn validate_block(&self, block: &Block) -> bool {
+    //     // Check if the block's hash matches the difficulty
+    //     let target = "0".repeat(self.difficulty);
+    //     block.hash.starts_with(&target)
+    // }
 
     pub fn replace_chain(&mut self, new_chain: Vec<Block>) {
         self.chain = new_chain;
