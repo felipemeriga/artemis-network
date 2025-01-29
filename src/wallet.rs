@@ -1,7 +1,7 @@
+use hex;
 use secp256k1::rand::rngs::OsRng;
 use secp256k1::{PublicKey, Secp256k1, SecretKey};
 use sha2::{Digest, Sha256};
-use hex;
 
 pub struct Wallet {
     pub private_key: SecretKey,

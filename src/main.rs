@@ -4,12 +4,13 @@ extern crate log;
 mod block;
 mod blockchain;
 mod broadcaster;
-mod sync;
 mod logger;
 mod miner;
 mod node;
 mod server;
+mod sync;
 mod tests;
+mod transaction;
 mod wallet;
 
 use crate::logger::init_logger;
