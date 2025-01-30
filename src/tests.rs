@@ -1,8 +1,10 @@
 #[cfg(test)]
 mod tests {
     use crate::blockchain;
+    use crate::pool::TransactionPool;
     use crate::transaction::Transaction;
     use crate::wallet::Wallet;
+    use ordered_float::OrderedFloat;
 
     #[test]
     fn create_dummy_blockchain() {
@@ -37,9 +39,15 @@ mod tests {
         let sender_wallet = Wallet::new();
         let recipient_wallet = Wallet::new();
         let amount = 1.0;
+        let fee = 0.1;
 
-        let mut transaction =
-            Transaction::new(sender_wallet.address(), recipient_wallet.address(), amount);
+        let mut transaction = Transaction::new(
+            sender_wallet.address(),
+            recipient_wallet.address(),
+            amount,
+            fee,
+            chrono::Utc::now().timestamp(),
+        );
         transaction.sign(&sender_wallet);
         assert_eq!(transaction.verify(&sender_wallet.public_key), true);
     }
@@ -49,15 +57,52 @@ mod tests {
         let sender_wallet = Wallet::new();
         let recipient_wallet = Wallet::new();
         let amount = 1.0;
+        let fee = 0.1;
 
-        let mut transaction =
-            Transaction::new(sender_wallet.address(), recipient_wallet.address(), amount);
+        let mut transaction = Transaction::new(
+            sender_wallet.address(),
+            recipient_wallet.address(),
+            amount,
+            fee,
+            chrono::Utc::now().timestamp(),
+        );
         transaction.sign(&sender_wallet);
 
         // Modifying the value of the amount, therefore the signature will be invalid
         // since the signing hash, will be different
-        transaction.amount = 10.0;
+        transaction.amount = OrderedFloat::from(10.0);
 
         assert_eq!(transaction.verify(&sender_wallet.public_key), false);
+    }
+
+    #[test]
+    fn transaction_pool_get_next_transaction_priority_order_correct() {
+        let mut pool = TransactionPool::new();
+
+        let tx1 = Transaction::new("Alice".into(), "Bob".into(), 10.0, 1.0, 100);
+        let tx2 = Transaction::new("Charlie".into(), "Dave".into(), 5.0, 2.0, 101);
+
+        pool.add_transaction(tx1);
+        pool.add_transaction(tx2);
+        // Make sure the transaction with the higher fee will be popped first
+        assert_eq!(
+            pool.get_next_transaction().unwrap().fee,
+            OrderedFloat::from(2.0)
+        )
+    }
+
+    #[test]
+    fn transaction_pool_get_next_transaction_same_fee_order_correct() {
+        // When comparing transactions with the same fee, the oldest one will be prioritized
+        let mut pool = TransactionPool::new();
+
+        let tx1 = Transaction::new("Alice".into(), "Bob".into(), 10.0, 1.0, 100);
+        let tx2 = Transaction::new("Charlie".into(), "Dave".into(), 5.0, 1.0, 101);
+        pool.add_transaction(tx1);
+        pool.add_transaction(tx2);
+
+        let tx = pool.get_next_transaction().unwrap();
+        assert_eq!(tx.amount, OrderedFloat::from(10.0));
+        assert_eq!(tx.timestamp, 100);
     }
 }

@@ -7,6 +7,7 @@ mod broadcaster;
 mod logger;
 mod miner;
 mod node;
+mod pool;
 mod server;
 mod sync;
 mod tests;
