@@ -6,14 +6,38 @@ use secp256k1::{Message, Secp256k1};
 use sha2::{Digest, Sha256};
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Transaction {
     pub sender: String,
     pub recipient: String,
+    #[serde(with = "ordered_float_serde")]
     pub amount: OrderedFloat<f64>,
+    #[serde(with = "ordered_float_serde")]
     pub fee: OrderedFloat<f64>, // NEW: Transaction fee
     pub timestamp: i64,
     pub signature: Option<String>, // Signature is optional until it's signed
+}
+
+mod ordered_float_serde {
+    use ordered_float::OrderedFloat;
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S>(value: &OrderedFloat<f64>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_f64(value.into_inner())
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<OrderedFloat<f64>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let float_value = f64::deserialize(deserializer)?;
+        Ok(OrderedFloat(float_value))
+    }
 }
 
 impl Eq for Transaction {}
@@ -55,7 +79,7 @@ impl Transaction {
     pub fn sign(&mut self, wallet: &Wallet) {
         let secp = Secp256k1::new();
 
-        // Serialize transaction data as bytes (include fee in hash)
+        // serialize transaction data as bytes (include fee in hash)
         let message_data = format!(
             "{}:{}:{}:{}:{}",
             self.sender, self.recipient, self.amount, self.fee, self.timestamp
@@ -82,7 +106,7 @@ impl Transaction {
             let sig_bytes = hex::decode(signature_hex).expect("Invalid signature hex");
             let signature = Signature::from_compact(&sig_bytes).expect("Invalid signature format");
 
-            // Serialize transaction data as bytes (include fee in hash)
+            // serialize transaction data as bytes (include fee in hash)
             let message_data = format!(
                 "{}:{}:{}:{}:{}",
                 self.sender, self.recipient, self.amount, self.fee, self.timestamp

@@ -25,7 +25,7 @@ impl Wallet {
 
     /// Generates a hashed wallet address derived from the public key
     pub fn address(&self) -> String {
-        // Serialize the public key as bytes
+        // serialize the public key as bytes
         let pub_key_bytes = self.public_key.serialize();
 
         // Hash the public key using SHA-256
