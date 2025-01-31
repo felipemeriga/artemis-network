@@ -3,9 +3,9 @@
 
 ## Next Short Steps
 
-- Add fee to transactions
-- Add fee to sign and transactions methods
-- Add Binary Heap transaction pool sorted by gas(fee)
+- Add fee to transactions ✅
+- Add fee to sign and transactions methods ✅
+- Add Binary Heap transaction pool sorted by gas(fee) ✅
 - create endpoint for getting new signed transactions
 - add transaction pool on server, for receiving the endpoint transactions
 - add transaction pool on miner, and select the transactions to process in the
