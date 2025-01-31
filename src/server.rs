@@ -1,7 +1,10 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
 use crate::broadcaster::Broadcaster;
+use crate::handler::{health_check, post_transaction};
+use crate::transaction::Transaction;
 use crate::{server_error, server_info, server_warn};
+use actix_web::{web, App, HttpServer};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -15,29 +18,6 @@ pub struct Request {
     pub data: String, // This can be serialized block data, blockchain data, etc.
 }
 
-pub async fn run_server(
-    blockchain: Arc<RwLock<Blockchain>>,
-    address: String,
-    block_tx: Arc<Mutex<Sender<Option<Block>>>>,
-    broadcaster: Arc<Mutex<Broadcaster>>,
-) {
-    let listener = TcpListener::bind(address.clone()).await.unwrap();
-
-    let sever_handler = ServerHandler {
-        blockchain,
-        block_tx,
-        broadcaster,
-    };
-
-    server_info!("Listening on {}", address);
-    while let Ok((stream, _)) = listener.accept().await {
-        let handler = sever_handler.clone();
-        tokio::spawn(async move {
-            handler.handle_connection(stream).await;
-        });
-    }
-}
-
 #[derive(Clone)]
 pub struct ServerHandler {
     blockchain: Arc<RwLock<Blockchain>>,
@@ -46,6 +26,52 @@ pub struct ServerHandler {
 }
 
 impl ServerHandler {
+    pub fn new(
+        blockchain: Arc<RwLock<Blockchain>>,
+        block_tx: Arc<Mutex<Sender<Option<Block>>>>,
+        broadcaster: Arc<Mutex<Broadcaster>>,
+    ) -> Self {
+        Self {
+            blockchain,
+            block_tx,
+            broadcaster,
+        }
+    }
+
+    /// Starts the Actix Web server for handling HTTP API requests
+    pub async fn start_http_server(self: Arc<Self>) -> std::io::Result<()> {
+        let handler = self.clone();
+        server_info!("HTTP Server listening on 8080");
+        HttpServer::new(move || {
+            App::new()
+                .app_data(web::Data::new(handler.clone()))
+                .service(post_transaction)
+                .service(health_check)
+        })
+        .bind("127.0.0.1:8080")?
+        .run()
+        .await
+    }
+
+    /// Handles incoming TCP connections, for P2P communication
+    pub async fn start_tcp_server(self: Arc<Self>, addr: String) -> std::io::Result<()> {
+        let listener = TcpListener::bind(addr.clone()).await?;
+        server_info!("TCP Server listening on {}", addr);
+
+        while let Ok((stream, _)) = listener.accept().await {
+            let handler_clone = self.clone();
+            tokio::spawn(async move {
+                handler_clone.handle_connection(stream).await;
+            });
+        }
+        Ok(())
+    }
+
+    /// Handles new transactions submitted via HTTP
+    pub(crate) async fn handle_new_transaction(&self, transaction: Transaction) -> bool {
+        true
+    }
+
     pub async fn handle_connection(&self, mut stream: TcpStream) {
         let mut buffer = [0; 1024];
         if let Ok(n) = stream.read(&mut buffer).await {

@@ -3,7 +3,7 @@ use crate::blockchain::Blockchain;
 use crate::broadcaster::Broadcaster;
 use crate::miner::mine;
 use crate::node_info;
-use crate::server::run_server;
+use crate::server::ServerHandler;
 use crate::sync::Sync;
 use std::sync::Arc;
 use tokio::sync::{mpsc::channel, Mutex, RwLock};
@@ -33,10 +33,17 @@ impl Node {
         let broadcaster = Arc::new(Mutex::new(Broadcaster::new(peers)));
 
         let server_broadcaster = broadcaster.clone();
-        // Spawn server task
-        let server_handle = tokio::spawn(async move {
-            run_server(blockchain, server_address, server_tx, server_broadcaster).await;
-        });
+
+        let server = Arc::new(ServerHandler::new(
+            blockchain,
+            server_tx,
+            server_broadcaster,
+        ));
+
+        // TCP Server will be used for p2p communication between nodes
+        let tcp_server = server.clone();
+        // HTTP Server will be used as RPC layer, for client communication with nodes
+        let http_server = server.clone();
 
         // Spawn a client task for syncing
         let blockchain = self.blockchain.clone();
@@ -44,20 +51,28 @@ impl Node {
         let sync_tx = tx.clone();
 
         let mut sync = Sync::new(blockchain, peers, sync_tx);
-        let sync_handle = tokio::spawn(async move {
-            sync.sync_with_peers().await;
-        });
+
 
         let blockchain = self.blockchain.clone();
         let miner_broadcaster = broadcaster.clone();
-        // Spawn a task for mining new blocks
-        let miner_handle = tokio::spawn(async move {
-            mine(blockchain, miner_broadcaster, block_rx).await;
-        });
+
 
         node_info!("started at {}", address);
 
-        // Wait for both client and server to finish
-        let _ = tokio::try_join!(server_handle, miner_handle, sync_handle);
+        // Run everything concurrently
+        let _ = tokio::join!(
+            async {
+                tcp_server.start_tcp_server(server_address).await.unwrap();
+            },
+            async {
+                http_server.start_http_server().await.unwrap();
+            },
+            async {
+                sync.sync_with_peers().await;
+            },
+            async {
+                mine(blockchain, miner_broadcaster, block_rx).await;
+            }
+        );
     }
 }

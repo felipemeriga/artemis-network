@@ -3,10 +3,10 @@ use hex;
 use ordered_float::OrderedFloat;
 use secp256k1::ecdsa::Signature;
 use secp256k1::{Message, Secp256k1};
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Transaction {
@@ -114,8 +114,7 @@ impl Transaction {
             let message_hash = Sha256::digest(message_data.as_bytes());
 
             // Create a message for verification
-            let message =
-                Message::from_digest(<[u8; 32]>::from(message_hash));
+            let message = Message::from_digest(<[u8; 32]>::from(message_hash));
 
             // Verify the signature
             secp.verify_ecdsa(&message, &signature, sender_public_key)
