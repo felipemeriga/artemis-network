@@ -35,6 +35,20 @@ mod tests {
     }
 
     #[test]
+    fn export_wallet() {
+        let wallet = crate::wallet::Wallet::new();
+        let export_wallet = wallet.export_wallet();
+        assert_eq!(export_wallet.private_key.len(), 64);
+        assert_eq!(export_wallet.public_key.len(), 66);
+
+        let wallet_from_binary =
+            Wallet::from_binary(export_wallet.public_key, export_wallet.private_key).unwrap();
+        assert_eq!(wallet_from_binary.address(), wallet.address());
+        assert_eq!(wallet_from_binary.public_key, wallet.public_key);
+        assert_eq!(wallet_from_binary.private_key, wallet.private_key);
+    }
+
+    #[test]
     fn verify_transaction_signature() {
         let sender_wallet = Wallet::new();
         let recipient_wallet = Wallet::new();

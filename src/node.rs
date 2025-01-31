@@ -52,10 +52,8 @@ impl Node {
 
         let mut sync = Sync::new(blockchain, peers, sync_tx);
 
-
         let blockchain = self.blockchain.clone();
         let miner_broadcaster = broadcaster.clone();
-
 
         node_info!("started at {}", address);
 

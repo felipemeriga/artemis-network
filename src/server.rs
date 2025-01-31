@@ -1,7 +1,7 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
 use crate::broadcaster::Broadcaster;
-use crate::handler::{health_check, post_transaction};
+use crate::handler::{create_wallet, health_check, post_transaction};
 use crate::transaction::Transaction;
 use crate::{server_error, server_info, server_warn};
 use actix_web::{web, App, HttpServer};
@@ -47,6 +47,7 @@ impl ServerHandler {
                 .app_data(web::Data::new(handler.clone()))
                 .service(post_transaction)
                 .service(health_check)
+                .service(create_wallet)
         })
         .bind("127.0.0.1:8080")?
         .run()

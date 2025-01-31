@@ -23,3 +23,8 @@ async fn post_transaction(
 async fn health_check() -> impl Responder {
     HttpResponse::Ok().body("OK!")
 }
+
+#[get("/create-wallet")]
+async fn create_wallet() -> impl Responder {
+    HttpResponse::Ok()
+}
