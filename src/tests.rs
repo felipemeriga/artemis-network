@@ -42,7 +42,7 @@ mod tests {
         assert_eq!(export_wallet.public_key.len(), 66);
 
         let wallet_from_binary =
-            Wallet::from_binary(export_wallet.public_key, export_wallet.private_key).unwrap();
+            Wallet::from_hex_string(export_wallet.public_key, export_wallet.private_key).unwrap();
         assert_eq!(wallet_from_binary.address(), wallet.address());
         assert_eq!(wallet_from_binary.public_key, wallet.public_key);
         assert_eq!(wallet_from_binary.private_key, wallet.private_key);

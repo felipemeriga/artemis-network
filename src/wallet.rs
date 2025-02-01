@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ExportWallet {
     pub private_key: String,
     pub public_key: String,
@@ -31,7 +32,7 @@ impl Wallet {
         }
     }
 
-    pub fn from_binary(public_key: String, private_key: String) -> Result<Wallet, WalletError> {
+    pub fn from_hex_string(public_key: String, private_key: String) -> Result<Wallet, WalletError> {
         // TODO - Remove unwrap
         let decoded_public_key = hex::decode(public_key)?;
         let decoded_private_key = hex::decode(private_key)?;
@@ -42,6 +43,12 @@ impl Wallet {
             public_key: PublicKey::from_slice(&decoded_public_key)?,
             private_key: SecretKey::from_byte_array(&private_key_array)?,
         })
+    }
+
+    pub fn public_key_from_hex_string(public_key: String) -> Result<PublicKey, WalletError> {
+        let decoded_public_key = hex::decode(public_key)?;
+        PublicKey::from_slice(&decoded_public_key)
+            .map_err(|err| WalletError::Secp256k1Error { source: err })
     }
 
     /// Generates a hashed wallet address derived from the public key

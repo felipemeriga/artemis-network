@@ -1,11 +1,12 @@
 use crate::server::ServerHandler;
 use crate::transaction::Transaction;
+use crate::wallet::Wallet;
 use actix_web::{get, post, web, HttpResponse, Responder};
 use std::sync::Arc;
 
 /// Actix Web handler for posting new transactions
 #[post("/transaction")]
-async fn post_transaction(
+pub async fn post_transaction(
     handler: web::Data<Arc<ServerHandler>>,
     transaction: web::Json<Transaction>,
 ) -> impl Responder {
@@ -20,11 +21,12 @@ async fn post_transaction(
 }
 
 #[get("/health")]
-async fn health_check() -> impl Responder {
+pub async fn health_check() -> impl Responder {
     HttpResponse::Ok().body("OK!")
 }
 
 #[get("/create-wallet")]
-async fn create_wallet() -> impl Responder {
-    HttpResponse::Ok()
+pub async fn create_wallet() -> impl Responder {
+    let export_wallet = Wallet::new().export_wallet();
+    HttpResponse::Ok().json(export_wallet)
 }
