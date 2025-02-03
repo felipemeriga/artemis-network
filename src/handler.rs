@@ -1,5 +1,5 @@
 use crate::server::ServerHandler;
-use crate::transaction::{Transaction, SignTransactionRequest, SubmitTransactionRequest};
+use crate::transaction::{SignTransactionRequest, SubmitTransactionRequest};
 use crate::wallet::Wallet;
 use actix_web::{get, post, web, HttpResponse, Responder};
 use std::sync::Arc;
@@ -16,13 +16,16 @@ pub async fn submit_transaction(
 
     let public_key = match Wallet::public_key_from_hex_string(public_key_hex) {
         Ok(public_key) => public_key,
-        Err(err) =>  return HttpResponse::BadRequest().body("Invalid public key")
+        Err(err) => return HttpResponse::BadRequest().body("Invalid public key"),
     };
-
 
     if tx.verify(&public_key) {
         let server_handler = handler.into_inner();
-        server_handler.transaction_pool.lock().await.add_transaction(tx);
+        server_handler
+            .transaction_pool
+            .lock()
+            .await
+            .add_transaction(tx);
         HttpResponse::Ok().body("Transaction received and added to node.")
     } else {
         HttpResponse::BadRequest().body("Transaction not signed")
@@ -55,17 +58,21 @@ pub async fn sign_and_submit_transaction(
     handler: web::Data<Arc<ServerHandler>>,
     sign_transaction_request: web::Json<SignTransactionRequest>,
 ) -> impl Responder {
-    let request =  sign_transaction_request.into_inner();
+    let request = sign_transaction_request.into_inner();
     let wallet = match Wallet::from_hex_string(request.public_key_hex, request.private_key_hex) {
         Ok(wallet) => wallet,
-        Err(err) =>  return HttpResponse::BadRequest().body("Invalid wallet information")
+        Err(err) => return HttpResponse::BadRequest().body("Invalid wallet information"),
     };
 
     let mut transaction = request.transaction;
     transaction.sign(&wallet);
 
     let server_handler = handler.into_inner();
-    server_handler.transaction_pool.lock().await.add_transaction(transaction);
+    server_handler
+        .transaction_pool
+        .lock()
+        .await
+        .add_transaction(transaction);
 
     HttpResponse::Ok().body("Transaction received, signed and submitted.")
 }
@@ -79,10 +86,10 @@ pub async fn sign_transaction(
     handler: web::Data<Arc<ServerHandler>>,
     sign_transaction_request: web::Json<SignTransactionRequest>,
 ) -> impl Responder {
-    let request =  sign_transaction_request.into_inner();
+    let request = sign_transaction_request.into_inner();
     let wallet = match Wallet::from_hex_string(request.public_key_hex, request.private_key_hex) {
         Ok(wallet) => wallet,
-        Err(err) =>  return HttpResponse::BadRequest().body("Invalid wallet information")
+        Err(err) => return HttpResponse::BadRequest().body("Invalid wallet information"),
     };
     let mut transaction = request.transaction;
     transaction.sign(&wallet);

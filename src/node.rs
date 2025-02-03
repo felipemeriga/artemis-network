@@ -3,11 +3,11 @@ use crate::blockchain::Blockchain;
 use crate::broadcaster::Broadcaster;
 use crate::miner::mine;
 use crate::node_info;
+use crate::pool::TransactionPool;
 use crate::server::ServerHandler;
 use crate::sync::Sync;
 use std::sync::Arc;
 use tokio::sync::{mpsc::channel, Mutex, RwLock};
-use crate::pool::TransactionPool;
 
 pub struct Node {
     pub blockchain: Arc<RwLock<Blockchain>>,

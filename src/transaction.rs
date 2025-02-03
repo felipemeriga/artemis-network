@@ -2,7 +2,7 @@ use crate::wallet::Wallet;
 use hex;
 use ordered_float::OrderedFloat;
 use secp256k1::ecdsa::Signature;
-use secp256k1::{Message, PublicKey, Secp256k1};
+use secp256k1::{Message, Secp256k1};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::cmp::Ordering;
@@ -17,7 +17,7 @@ use std::collections::HashMap;
 pub struct SignTransactionRequest {
     pub transaction: Transaction,
     pub public_key_hex: String,
-    pub private_key_hex: String
+    pub private_key_hex: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
