@@ -66,7 +66,7 @@ pub async fn mine(
                 broadcaster
                     .lock()
                     .await
-                    .broadcast_new_block(&new_block, None)
+                    .broadcast_new_block(&new_block)
                     .await;
             } else {
                 miner_info!("Mining became invalid due to a chain update.");

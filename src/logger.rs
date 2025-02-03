@@ -95,6 +95,9 @@ macro_rules! sync_warn {
 
 pub fn init_logger() {
     Builder::new()
+        .filter(None, LevelFilter::Debug) // Keep all debug logs
+        .filter_module("actix_web", LevelFilter::Off) // Suppress Actix logs
+        .filter_module("actix_server", LevelFilter::Off) // Suppress Actix server logs
         .format(|buf, record| {
             // Prepend prefix based on the log target
             let prefix = match record.target() {
