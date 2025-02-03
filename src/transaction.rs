@@ -2,13 +2,33 @@ use crate::wallet::Wallet;
 use hex;
 use ordered_float::OrderedFloat;
 use secp256k1::ecdsa::Signature;
-use secp256k1::{Message, Secp256k1};
+use secp256k1::{Message, PublicKey, Secp256k1};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
+// WARNING - This struct should be used for learning purposes only.
+// Sharing public and private key, inside requests is a totally risky.
+// Ideally, you should sign your transaction locally, and submit it through the node.
+// You can use this struct for debugging purposes only
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SignTransactionRequest {
+    pub transaction: Transaction,
+    pub public_key_hex: String,
+    pub private_key_hex: String
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SubmitTransactionRequest {
+    pub transaction: Transaction,
+    pub public_key_hex: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Transaction {
     pub sender: String,
     pub recipient: String,

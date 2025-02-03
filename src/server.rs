@@ -1,7 +1,7 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
 use crate::broadcaster::Broadcaster;
-use crate::handler::{create_wallet, health_check, post_transaction};
+use crate::handler::{create_wallet, health_check, submit_transaction, sign_and_submit_transaction, sign_transaction};
 use crate::transaction::Transaction;
 use crate::{server_error, server_info, server_warn};
 use actix_web::{web, App, HttpServer};
@@ -11,6 +11,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc::Sender;
 use tokio::sync::{Mutex, RwLock};
+use crate::pool::TransactionPool;
 
 #[derive(Serialize, Deserialize)]
 pub struct Request {
@@ -23,6 +24,7 @@ pub struct ServerHandler {
     blockchain: Arc<RwLock<Blockchain>>,
     block_tx: Arc<Mutex<Sender<Option<Block>>>>,
     broadcaster: Arc<Mutex<Broadcaster>>,
+    pub transaction_pool: Arc<Mutex<TransactionPool>>
 }
 
 impl ServerHandler {
@@ -30,11 +32,13 @@ impl ServerHandler {
         blockchain: Arc<RwLock<Blockchain>>,
         block_tx: Arc<Mutex<Sender<Option<Block>>>>,
         broadcaster: Arc<Mutex<Broadcaster>>,
+        transaction_pool: Arc<Mutex<TransactionPool>>
     ) -> Self {
         Self {
             blockchain,
             block_tx,
             broadcaster,
+            transaction_pool
         }
     }
 
@@ -45,9 +49,11 @@ impl ServerHandler {
         HttpServer::new(move || {
             App::new()
                 .app_data(web::Data::new(handler.clone()))
-                .service(post_transaction)
+                .service(submit_transaction)
                 .service(health_check)
                 .service(create_wallet)
+                .service(sign_and_submit_transaction)
+                .service(sign_transaction)
         })
         .bind("127.0.0.1:8080")?
         .run()

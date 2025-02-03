@@ -7,6 +7,7 @@ use crate::server::ServerHandler;
 use crate::sync::Sync;
 use std::sync::Arc;
 use tokio::sync::{mpsc::channel, Mutex, RwLock};
+use crate::pool::TransactionPool;
 
 pub struct Node {
     pub blockchain: Arc<RwLock<Blockchain>>,
@@ -31,13 +32,16 @@ impl Node {
         let server_tx = tx.clone();
         let server_address = address.clone();
         let broadcaster = Arc::new(Mutex::new(Broadcaster::new(peers)));
+        let transaction_pool = Arc::new(Mutex::new(TransactionPool::new()));
 
         let server_broadcaster = broadcaster.clone();
+        let server_tx_pool = transaction_pool.clone();
 
         let server = Arc::new(ServerHandler::new(
             blockchain,
             server_tx,
             server_broadcaster,
+            server_tx_pool,
         ));
 
         // TCP Server will be used for p2p communication between nodes

@@ -10,6 +10,7 @@ use sha2::{Digest, Sha256};
 pub struct ExportWallet {
     pub private_key: String,
     pub public_key: String,
+    pub address: String,
 }
 
 pub struct Wallet {
@@ -67,6 +68,7 @@ impl Wallet {
         ExportWallet {
             private_key: hex::encode(self.private_key.secret_bytes()),
             public_key: hex::encode(self.public_key.serialize()),
+            address: self.address(),
         }
     }
 }
