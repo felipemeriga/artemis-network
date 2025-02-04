@@ -144,6 +144,16 @@ impl Transaction {
         }
     }
 
+    pub fn hash(&self) -> String {
+        let tx_data = format!(
+            "{}:{}:{}:{}:{}",
+            self.sender, self.recipient, self.amount, self.fee, self.timestamp
+        );
+
+        let tx_hash = Sha256::digest(tx_data.as_bytes());
+        hex::encode(tx_hash)
+    }
+
     /// Check if sender has sufficient balance before signing the transaction
     pub fn has_sufficient_balance(&self, balances: &HashMap<String, f64>) -> bool {
         if let Some(balance) = balances.get(&self.sender) {
