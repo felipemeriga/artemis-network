@@ -57,4 +57,18 @@ impl TransactionPool {
             None
         }
     }
+
+    pub fn add_transactions_back(&mut self, transactions: Vec<Transaction>) {
+        for tx in transactions {
+            self.add_transaction(tx);
+        }
+    }
+
+    /// Remove transactions that are present in the new block
+    pub fn remove_confirmed_transactions(&mut self, confirmed_transactions: &[Transaction]) {
+        for tx in confirmed_transactions {
+            let tx_hash = tx.hash();
+            self.remove_transaction(&tx_hash);
+        }
+    }
 }
