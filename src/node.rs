@@ -1,7 +1,7 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
 use crate::broadcaster::Broadcaster;
-use crate::miner::mine;
+use crate::miner::Miner;
 use crate::node_info;
 use crate::pool::TransactionPool;
 use crate::server::ServerHandler;
@@ -58,6 +58,8 @@ impl Node {
 
         let blockchain = self.blockchain.clone();
         let miner_broadcaster = broadcaster.clone();
+        let miner_tx_pool = transaction_pool.clone();
+        let mut miner = Miner::new(blockchain, miner_broadcaster, block_rx, miner_tx_pool);
 
         node_info!("started at {}", address);
 
@@ -73,7 +75,7 @@ impl Node {
                 sync.sync_with_peers().await;
             },
             async {
-                mine(blockchain, miner_broadcaster, block_rx).await;
+                miner.mine().await;
             }
         );
     }
