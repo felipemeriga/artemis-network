@@ -1,4 +1,5 @@
 use crate::block::Block;
+use crate::transaction::Transaction;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Clone)]
@@ -9,7 +10,7 @@ pub struct Blockchain {
 
 impl Blockchain {
     pub fn new() -> Self {
-        let genesis_block = Block::new(0, 0, "Genesis Block".to_string(), "0".to_string());
+        let genesis_block = Block::new(0, 0, vec![], "0".to_string());
         Blockchain {
             chain: vec![genesis_block],
             difficulty: 5, // Set the PoW difficulty (e.g., 4 leading zeros)
@@ -66,14 +67,14 @@ impl Blockchain {
         self.chain = new_chain;
     }
 
-    pub fn mine_new_block(&self, data: String) -> Block {
+    pub fn mine_new_block(&self, data: Vec<Transaction>) -> Block {
         let (mut mined_block, difficult) = self.prepare_block_for_mining(data);
         mined_block.mine(difficult);
 
         mined_block
     }
 
-    pub fn prepare_block_for_mining(&self, data: String) -> (Block, usize) {
+    pub fn prepare_block_for_mining(&self, data: Vec<Transaction>) -> (Block, usize) {
         let last_block = self.chain.last().unwrap();
         let new_index = last_block.index + 1;
         let new_timestamp = chrono::Utc::now().timestamp() as u64;

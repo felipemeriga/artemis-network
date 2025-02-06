@@ -59,7 +59,7 @@ impl Node {
         let blockchain = self.blockchain.clone();
         let miner_broadcaster = broadcaster.clone();
         let miner_tx_pool = transaction_pool.clone();
-        let mut miner = Miner::new(blockchain, miner_broadcaster, block_rx, miner_tx_pool);
+        let mut miner = Miner::new(blockchain, miner_broadcaster, block_rx, miner_tx_pool, true);
 
         node_info!("started at {}", address);
 

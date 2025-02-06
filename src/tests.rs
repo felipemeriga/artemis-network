@@ -11,9 +11,9 @@ mod tests {
         let mut blockchain = blockchain::Blockchain::new();
 
         // Add blocks to the blockchain with data
-        let second_block = blockchain.mine_new_block("Second Block".to_string());
+        let second_block = blockchain.mine_new_block(vec![]);
         blockchain.add_block(second_block);
-        let third_block = blockchain.mine_new_block("Third Block".to_string());
+        let third_block = blockchain.mine_new_block(vec![]);
         blockchain.add_block(third_block);
 
         // Print out the blockchain with hashes

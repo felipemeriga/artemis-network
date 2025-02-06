@@ -14,6 +14,7 @@ pub struct Miner {
     broadcaster: Arc<Mutex<Broadcaster>>,
     block_rx: Receiver<Option<Block>>,
     transaction_pool: Arc<Mutex<TransactionPool>>,
+    mine_without_transactions: bool,
 }
 
 impl Miner {
@@ -22,18 +23,35 @@ impl Miner {
         broadcaster: Arc<Mutex<Broadcaster>>,
         block_rx: Receiver<Option<Block>>,
         transaction_pool: Arc<Mutex<TransactionPool>>,
+        mine_without_transactions: bool,
     ) -> Self {
         Self {
             blockchain,
             broadcaster,
             block_rx,
             transaction_pool,
+            mine_without_transactions,
         }
     }
 
     pub async fn mine(&mut self) {
         loop {
-            let data = format!("Block at {}", chrono::Utc::now());
+            let next_transaction = self.transaction_pool.lock().await.get_next_transaction();
+            // If there are no transactions,
+            // and this miner is configured to mine only when there are
+            // transactions,
+            // it won't start the process until a new transaction arrives
+            if next_transaction.is_none() && !self.mine_without_transactions {
+                continue;
+            }
+
+            // For now, since our blockchain system is quite small, and used for learning
+            // purposes, we will just include a single transaction in a block
+            let data = match next_transaction {
+                Some(tx) => vec![tx],
+                None => vec![],
+            };
+
             let mut mined_block: Option<Block> = None;
 
             // Prepare a new block for mining
@@ -59,6 +77,13 @@ impl Miner {
                     // If a new block is received from the network
                     Some(new_block) = self.block_rx.recv() => {
                         miner_info!("Received valid updated state during mining, aborting the current process");
+                        // Adding back the transactions to the pool, since a new block came
+                        self.transaction_pool.lock().await.add_transactions_back(data.clone());
+                        if new_block.is_some() {
+                            // check if the new incoming block,
+                            // contains transactions that are present in this transaction pool
+                             self.transaction_pool.lock().await.remove_confirmed_transactions(&new_block.unwrap().transactions);
+                        }
                         break; // Exit the mining loop and restart
                     }
 
