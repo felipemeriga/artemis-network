@@ -2,7 +2,6 @@ use crate::block::Block;
 use crate::blockchain::Blockchain;
 use crate::broadcaster::Broadcaster;
 use crate::miner::Miner;
-use crate::node_info;
 use crate::pool::TransactionPool;
 use crate::server::ServerHandler;
 use crate::sync::Sync;
@@ -22,7 +21,7 @@ impl Node {
         }
     }
 
-    pub async fn start(&self, address: String) {
+    pub async fn start(&self, tcp_address: String, http_address: String) {
         let blockchain = self.blockchain.clone();
         let peers = self.peers.clone();
 
@@ -30,7 +29,6 @@ impl Node {
 
         let tx = Arc::new(Mutex::new(block_tx));
         let server_tx = tx.clone();
-        let server_address = address.clone();
         let broadcaster = Arc::new(Mutex::new(Broadcaster::new(peers)));
         let transaction_pool = Arc::new(Mutex::new(TransactionPool::new()));
 
@@ -59,17 +57,22 @@ impl Node {
         let blockchain = self.blockchain.clone();
         let miner_broadcaster = broadcaster.clone();
         let miner_tx_pool = transaction_pool.clone();
-        let mut miner = Miner::new(blockchain, miner_broadcaster, block_rx, miner_tx_pool, true);
-
-        node_info!("started at {}", address);
+        let mut miner = Miner::new(
+            blockchain,
+            miner_broadcaster,
+            block_rx,
+            miner_tx_pool,
+            true,
+            1,
+        );
 
         // Run everything concurrently
         let _ = tokio::join!(
             async {
-                tcp_server.start_tcp_server(server_address).await.unwrap();
+                tcp_server.start_tcp_server(tcp_address).await.unwrap();
             },
             async {
-                http_server.start_http_server().await.unwrap();
+                http_server.start_http_server(http_address).await.unwrap();
             },
             async {
                 sync.sync_with_peers().await;

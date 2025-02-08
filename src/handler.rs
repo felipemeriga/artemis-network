@@ -1,4 +1,5 @@
 use crate::server::ServerHandler;
+use crate::server_info;
 use crate::transaction::{SignTransactionRequest, SubmitTransactionRequest};
 use crate::wallet::Wallet;
 use actix_web::{get, post, web, HttpResponse, Responder};
@@ -25,7 +26,14 @@ pub async fn submit_transaction(
             .transaction_pool
             .lock()
             .await
-            .add_transaction(tx);
+            .add_transaction(tx.clone());
+        server_handler
+            .broadcaster
+            .lock()
+            .await
+            .broadcast_transaction(tx)
+            .await;
+        server_info!("New valid transaction received");
         HttpResponse::Ok().body("Transaction received and added to node.")
     } else {
         HttpResponse::BadRequest().body("Transaction not signed")
@@ -72,7 +80,14 @@ pub async fn sign_and_submit_transaction(
         .transaction_pool
         .lock()
         .await
-        .add_transaction(transaction);
+        .add_transaction(transaction.clone());
+    server_handler
+        .broadcaster
+        .lock()
+        .await
+        .broadcast_transaction(transaction)
+        .await;
+    server_info!("New valid transaction received");
 
     HttpResponse::Ok().body("Transaction received, signed and submitted.")
 }

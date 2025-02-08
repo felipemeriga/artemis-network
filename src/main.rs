@@ -26,7 +26,11 @@ use clap::Parser;
 struct Args {
     /// The hostname and port to run the application (e.g., 127.0.0.1:8080)
     #[arg(short, long)]
-    bind: String,
+    tcp_bind: String,
+
+    /// The hostname and port to run the application (e.g., 127.0.0.1:8080)
+    #[arg(short, long)]
+    rpc_bind: String,
 
     /// List of peer nodes (comma-separated, e.g., 127.0.0.1:8333,192.168.1.1:8333)
     #[arg(short, long, default_value = "")]
@@ -40,8 +44,11 @@ async fn main() {
     // Parse command-line arguments
     let args = Args::parse();
 
-    // Extract the bind address (host and port)
-    let bind_addr = args.bind;
+    // Extract the bind address for tcp server (peer-to-peer communication) (host and port)
+    let tcp_bind_addr = args.tcp_bind;
+
+    // Extract the bind address for HTTP server (RPC client calls)
+    let http_bind_addr = args.rpc_bind;
 
     // Extract peers
     let peers: Vec<String> = args
@@ -52,5 +59,5 @@ async fn main() {
         .collect();
 
     let node = Node::new(peers);
-    node.start(bind_addr).await;
+    node.start(tcp_bind_addr, http_bind_addr).await;
 }

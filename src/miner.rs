@@ -15,6 +15,7 @@ pub struct Miner {
     block_rx: Receiver<Option<Block>>,
     transaction_pool: Arc<Mutex<TransactionPool>>,
     mine_without_transactions: bool,
+    transactions_per_block: i32,
 }
 
 impl Miner {
@@ -24,6 +25,7 @@ impl Miner {
         block_rx: Receiver<Option<Block>>,
         transaction_pool: Arc<Mutex<TransactionPool>>,
         mine_without_transactions: bool,
+        transactions_per_block: i32,
     ) -> Self {
         Self {
             blockchain,
@@ -31,26 +33,28 @@ impl Miner {
             block_rx,
             transaction_pool,
             mine_without_transactions,
+            transactions_per_block,
         }
     }
 
     pub async fn mine(&mut self) {
         loop {
-            let next_transaction = self.transaction_pool.lock().await.get_next_transaction();
+            let data = {
+                self.transaction_pool
+                    .lock()
+                    .await
+                    .get_transactions_to_mine(self.transactions_per_block)
+            };
             // If there are no transactions,
             // and this miner is configured to mine only when there are
             // transactions,
             // it won't start the process until a new transaction arrives
-            if next_transaction.is_none() && !self.mine_without_transactions {
+            if data.len() <= 0 && !self.mine_without_transactions {
                 continue;
             }
 
             // For now, since our blockchain system is quite small, and used for learning
             // purposes, we will just include a single transaction in a block
-            let data = match next_transaction {
-                Some(tx) => vec![tx],
-                None => vec![],
-            };
 
             let mut mined_block: Option<Block> = None;
 
@@ -77,12 +81,13 @@ impl Miner {
                     // If a new block is received from the network
                     Some(new_block) = self.block_rx.recv() => {
                         miner_info!("Received valid updated state during mining, aborting the current process");
-                        // Adding back the transactions to the pool, since a new block came
-                        self.transaction_pool.lock().await.add_transactions_back(data.clone());
                         if new_block.is_some() {
                             // check if the new incoming block,
                             // contains transactions that are present in this transaction pool
-                             self.transaction_pool.lock().await.remove_confirmed_transactions(&new_block.unwrap().transactions);
+                            {
+                             self.transaction_pool.lock().await.process_mined_transactions(&new_block.unwrap().transactions);
+                            }
+
                         }
                         break; // Exit the mining loop and restart
                     }
@@ -90,7 +95,6 @@ impl Miner {
                     // Simulate mining time to let other tasks execute, uncomment this for making the mining
                     // process slower
                     // _ = tokio::time::sleep(Duration::from_nanos(10)) => {}
-
                     _ = tokio::task::yield_now() => {}
                 }
             }
@@ -107,11 +111,17 @@ impl Miner {
                         new_block,
                         start_time.elapsed()
                     );
-                    self.broadcaster
-                        .lock()
-                        .await
-                        .broadcast_new_block(&new_block)
-                        .await;
+                    {
+                        self.transaction_pool
+                            .lock()
+                            .await
+                            .process_mined_transactions(&new_block.transactions);
+                        self.broadcaster
+                            .lock()
+                            .await
+                            .broadcast_new_block(&new_block)
+                            .await;
+                    }
                 } else {
                     miner_info!("Mining became invalid due to a chain update.");
                     continue; // Restart the mining loop

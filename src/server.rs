@@ -25,7 +25,7 @@ pub struct Request {
 pub struct ServerHandler {
     blockchain: Arc<RwLock<Blockchain>>,
     block_tx: Arc<Mutex<Sender<Option<Block>>>>,
-    broadcaster: Arc<Mutex<Broadcaster>>,
+    pub broadcaster: Arc<Mutex<Broadcaster>>,
     pub transaction_pool: Arc<Mutex<TransactionPool>>,
 }
 
@@ -45,9 +45,9 @@ impl ServerHandler {
     }
 
     /// Starts the Actix Web server for handling HTTP API requests
-    pub async fn start_http_server(self: Arc<Self>) -> std::io::Result<()> {
+    pub async fn start_http_server(self: Arc<Self>, http_addr: String) -> std::io::Result<()> {
         let handler = self.clone();
-        server_info!("HTTP Server listening on 8080");
+        server_info!("HTTP Server listening on {}", http_addr);
         HttpServer::new(move || {
             App::new()
                 .app_data(web::Data::new(handler.clone()))
@@ -57,15 +57,15 @@ impl ServerHandler {
                 .service(sign_and_submit_transaction)
                 .service(sign_transaction)
         })
-        .bind("127.0.0.1:8080")?
+        .bind(http_addr)?
         .run()
         .await
     }
 
     /// Handles incoming TCP connections, for P2P communication
-    pub async fn start_tcp_server(self: Arc<Self>, addr: String) -> std::io::Result<()> {
-        let listener = TcpListener::bind(addr.clone()).await?;
-        server_info!("TCP Server listening on {}", addr);
+    pub async fn start_tcp_server(self: Arc<Self>, tcp_addr: String) -> std::io::Result<()> {
+        let listener = TcpListener::bind(tcp_addr.clone()).await?;
+        server_info!("TCP Server listening on {}", tcp_addr);
 
         while let Ok((stream, _)) = listener.accept().await {
             let handler_clone = self.clone();
@@ -87,6 +87,28 @@ impl ServerHandler {
             let request: Result<Request, _> = serde_json::from_slice(&buffer[..n]);
             if let Ok(req) = request {
                 match req.command.as_str() {
+                    "transaction" => {
+                        if let Ok(tx) = serde_json::from_str::<Transaction>(&req.data) {
+                            // Inside the function,
+                            // there is already a validation,
+                            // for avoiding duplicate transactions
+                            if !self
+                                .transaction_pool
+                                .lock()
+                                .await
+                                .transaction_already_exists(&tx)
+                            {
+                                self.broadcaster
+                                    .lock()
+                                    .await
+                                    .broadcast_transaction(tx.clone())
+                                    .await;
+                            };
+                            self.transaction_pool.lock().await.add_transaction(tx);
+                        } else {
+                            server_warn!("Invalid transaction received")
+                        }
+                    }
                     "new_block" => {
                         if let Ok(block) = serde_json::from_str::<Block>(&req.data) {
                             let latest_block =
@@ -132,17 +154,17 @@ impl ServerHandler {
 
         // Broadcast the block only after releasing the lock
         if is_valid_block {
-            self.broadcaster
-                .lock()
-                .await
-                .broadcast_new_block(&block.clone())
-                .await;
             self.block_tx
                 .lock()
                 .await
                 .send(Some(block.clone()))
                 .await
                 .expect("TODO: panic message");
+            self.broadcaster
+                .lock()
+                .await
+                .broadcast_new_block(&block.clone())
+                .await;
         }
     }
 }
