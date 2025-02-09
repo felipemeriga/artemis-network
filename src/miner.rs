@@ -85,7 +85,7 @@ impl Miner {
                             // check if the new incoming block,
                             // contains transactions that are present in this transaction pool
                             {
-                             self.transaction_pool.lock().await.process_mined_transactions(&new_block.unwrap().transactions);
+                             self.transaction_pool.lock().await.process_mined_transactions(false, &new_block.unwrap().transactions);
                             }
 
                         }
@@ -115,7 +115,7 @@ impl Miner {
                         self.transaction_pool
                             .lock()
                             .await
-                            .process_mined_transactions(&new_block.transactions);
+                            .process_mined_transactions(true, &new_block.transactions);
                         self.broadcaster
                             .lock()
                             .await

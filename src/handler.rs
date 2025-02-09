@@ -22,18 +22,20 @@ pub async fn submit_transaction(
 
     if tx.verify(&public_key) {
         let server_handler = handler.into_inner();
-        server_handler
-            .transaction_pool
-            .lock()
-            .await
-            .add_transaction(tx.clone());
-        server_handler
-            .broadcaster
-            .lock()
-            .await
-            .broadcast_transaction(tx)
-            .await;
         server_info!("New valid transaction received");
+        {
+            server_handler
+                .transaction_pool
+                .lock()
+                .await
+                .add_transaction(tx.clone());
+            server_handler
+                .broadcaster
+                .lock()
+                .await
+                .broadcast_transaction(tx)
+                .await;
+        }
         HttpResponse::Ok().body("Transaction received and added to node.")
     } else {
         HttpResponse::BadRequest().body("Transaction not signed")

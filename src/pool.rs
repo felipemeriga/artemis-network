@@ -69,11 +69,25 @@ impl TransactionPool {
         transactions
     }
 
-    pub fn process_mined_transactions(&mut self, confirmed_transactions: &[Transaction]) {
+    pub fn process_mined_transactions(
+        &mut self,
+        mined_by_self: bool,
+        confirmed_transactions: &[Transaction],
+    ) {
+        if mined_by_self {
+            self.pending_map.clear();
+            return;
+        }
+
+        // TODO - Add explanation why we have this logic
         for tx in confirmed_transactions {
-            self.tx_map.remove(&tx.hash());
-            self.removed_set.insert(tx.hash());
-            self.pending_map.remove(&tx.hash());
+            let tx_hash = tx.hash();
+            if self.pending_map.contains_key(&tx_hash) {
+                self.pending_map.remove(&tx_hash);
+            } else if self.tx_map.contains_key(&tx.hash()) {
+                self.tx_map.remove(&tx.hash());
+                self.removed_set.insert(tx.hash());
+            }
         }
 
         if self.pending_map.len() > 0 {
