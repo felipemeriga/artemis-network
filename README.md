@@ -6,11 +6,11 @@
 - Add fee to transactions ✅
 - Add fee to sign and transactions methods ✅
 - Add Binary Heap transaction pool sorted by gas(fee) ✅
-- create endpoint for getting new signed transactions
-- add transaction pool on server, for receiving the endpoint transactions
-- add transaction pool on miner, and select the transactions to process in the
+- create endpoint for getting new signed transactions ✅
+- add transaction pool on server, for receiving the endpoint transactions ✅
+- add transaction pool on miner, and select the transactions to process in the ✅
 start of the mining process, adding also the mint prize
-- in the beginning, there won't be balance checking
+- in the beginning, there won't be balance checking ✅
 
 ## Next steps
 
