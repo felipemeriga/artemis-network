@@ -1,102 +1,99 @@
 # artemis-network
 
-A straightforward way of learning how blockchain works under the hood.
+A simple and effective way to learn how blockchain works under the hood.
 
 ---
 
-## Motivations
+## Motivation
 
-Working through many different companies placed over web3 market, we can see among its developers,
-that most of them usually have a proper knowledge of how the network they work with is supposed to work, although
-we still see people that only interact with the blockchain network through
-APIs and interfaces without understanding the underlying mechanisms.
+While working with various companies in the Web3 space, we’ve noticed a common trend among developers: many have a solid understanding of how the blockchain networks they work with are supposed to function. However, some primarily interact with blockchain networks through APIs and interfaces without fully grasping the underlying mechanisms.
 
-Ideally, you don't need to know all the aspects behind a blockchain, but getting in touch with them
-may put you over another superficial candidate.
+Although you don’t need to understand every technical aspect of blockchain to work with it, gaining deeper insights can give you a significant edge over others.
 
 ## Introduction
 
-Artemis-network is a blockchain fully written in Rust, which aims to be a lightweight codebase, 
-containing all the necessary features that a production-ready blockchain has, but with less complexity,
-for being a guide of how most of the cryptocurrency network works bellow the scenes.
+Artemis-network is a blockchain implementation written entirely in Rust. It aims to provide a lightweight yet fully functional codebase, showcasing essential blockchain features found in production-ready networks, but with reduced complexity. This makes it an excellent learning tool for understanding how cryptocurrency networks operate beneath the surface.
 
-Therefore, you can run our Nodes locally, or even through different servers, for:
-- What are the main parts of a blockchain.
-- How does the different concurrent/parallel process interact with each other.
-- Networking details about p2p communication.
-- Study the role of miners and how they validate transactions and create new blocks.
-- Learn about different consensus algorithms used in blockchain networks and their pros and cons.
-- Gain hands-on experience by building your own blockchain network from scratch.
-- Explore the fundamentals of blockchain technology and its impact on various industries.
-- How transactions are validated and processed.
+You can run our nodes locally or across different servers to explore topics such as:
+- The core components of a blockchain.
+- How concurrent and parallel processes interact within a blockchain network.
+- Networking details, including peer-to-peer (P2P) communication.
+- The role of miners, transaction validation, and block creation.
+- Various consensus algorithms used in blockchain networks, along with their advantages and trade-offs.
+- Hands-on experience in building your own blockchain network from scratch.
+- Fundamentals of blockchain technology and its impact on different industries.
+- The transaction validation and processing lifecycle.
 
-Thus, while artemis isn't a production-ready blockchain, it's a deeper way of learning this concept.
+While Artemis-network is not a production-ready blockchain, it provides a deep, hands-on approach to learning these concepts.
 
 ---
 
 ## Current Features
 
-We are still building this tool,
-and we divided each blockchain's internal responsibilities inside a node, through different characters:
-- Server:
-  - Responsible for managing TCP and HTTP connections.
-  - Works on discovering peers.
-- Sync:
-  - Keeps the blockchain state in sync between nodes.
-- Miner:
-  - Executes the real mining process.
-- Broadcaster:
-  - Broadcast transactions, blocks and the own blockchain to peers.
+We are actively developing this project and have structured the blockchain’s internal responsibilities within a node using different functional components:
 
-All these actors, run concurrently for achieving their tasks.
-Sharing references safely about transaction pool,
-blockchain, peers.
+- **Server**:
+  - Manages TCP and HTTP connections.
+  - Handles peer discovery.
+- **Sync**:
+  - Keeps the blockchain state synchronized across nodes.
+- **Miner**:
+  - Executes the mining process.
+- **Broadcaster**:
+  - Broadcasts transactions, blocks, and the blockchain itself to peers.
 
-Here we have more in detail, what we currently have:
+These components run concurrently, safely sharing references to the transaction pool, blockchain, and peer data.
 
-- Lightweight codebase.
-- Guide for understanding blockchain networks.
-- Basic block setup, and proof of work functions for mining it.
-- Blockchain structure, containing blocks, and validations.
-- Wallet generation, public/private key, and address.
-- Transaction:
-  - Creating, signing and validating.
-- Transaction pool:
-  - Prioritization based on gas.
-  - Capability of handling transaction conflicts and resolving them.
-- Networking:
-  - TCP server for p2p communication.
-  - Ability to broadcast transactions, blocks and blockchain.
-  - HTTP server for client interactions, and future RPC.
-- Sync:
-  - Nodes periodically request the full copy of the blockchain to compare with the current one.
-- Mining:
-  - Current miners pop some transactions from the transaction pool and try to mine the block.
+### Key Features Implemented:
+- Lightweight and easy-to-read codebase.
+- A guide for understanding blockchain networks.
+- Basic block setup with proof-of-work mining functions.
+- Blockchain structure, including blocks and validation mechanisms.
+- Wallet generation with public/private key cryptography and address management.
+- **Transactions**:
+  - Creation, signing, and validation.
+- **Transaction Pool**:
+  - Prioritization based on gas fees.
+  - Handling of transaction conflicts and resolution.
+- **Networking**:
+  - TCP server for P2P communication.
+  - Broadcasting transactions, blocks, and the blockchain state.
+  - HTTP server for client interactions and future RPC support.
+- **Sync Mechanism**:
+  - Nodes periodically request full blockchain copies to compare and update their state.
+- **Mining Process**:
+  - Miners extract transactions from the transaction pool and attempt to mine new blocks.
 
 ---
 
-## Next Features to Implement
+## Upcoming Features
 
-- Apply linting on the current code.
-- Currently, peers are managed through command-line arguments.
-  We need to add a mDNS mechanism, for dynamically
-  discovering peers.
-- Add RocksDB for managing and storing transactions and blocks.
-- Validation rules, preventing double-spending.
-- Configuration management of each node through a config file.
-- Utils repo, for creating a wallet, signing transactions through a CLI tool.
-- Handle forks on consensus algorithm
-- Blockchain Explorer: Build a web interface to explore blockchain data.
-- Scalability: Focus on improving performance and scalability.
-- Testing and Optimization: Write tests, benchmark, and optimize the code.
+- Apply linting to the existing codebase.
+- Implement dynamic peer discovery using mDNS (instead of manual command-line configurations).
+- Integrate RocksDB for efficient transaction and block storage.
+- Strengthen validation rules to prevent double-spending.
+- Implement configuration management via a config file.
+- Develop a CLI tool for wallet creation and transaction signing.
+- Improve consensus handling to manage forks efficiently.
+- **Blockchain Explorer**: Build a web-based interface to visualize blockchain data.
+- **Scalability Enhancements**: Improve performance and scalability.
+- **Testing & Optimization**: Write tests, benchmark, and optimize the code.
 
+---
 
-## Current Command line arguments:
-- `tcp-bind`: The hostname and port to run the TCP server (e.g., `127.0.0.1:5000`)
-- `rpc-bind`: The hostname and port to run the HTTP server (e.g., `127.0.0.1:8080`)
-- `peers`: List of peer nodes (comma-separated, e.g., `127.0.0.1:8333,192.168.1.1:8333`)
+## Command-Line Arguments
 
-## How to run it locally
+The following arguments can be used to configure node behavior:
+
+- `tcp-bind` → The hostname and port for the TCP server (e.g., `127.0.0.1:5000`).
+- `rpc-bind` → The hostname and port for the HTTP server (e.g., `127.0.0.1:8080`).
+- `peers` → A comma-separated list of peer nodes (e.g., `127.0.0.1:8333,192.168.1.1:8333`).
+
+---
+
+## Running the Project Locally
+
+To run Artemis-network locally, use the following command:
 
 ```shell
 cargo run --color=always --package artemis-network --features qa --bin artemis-network -- --tcp-bind=127.0.0.1:5000 --rpc-bind=127.0.0.1:8080 --peers=127.0.0.1:5001
