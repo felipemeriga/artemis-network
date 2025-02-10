@@ -41,7 +41,11 @@ impl Sync {
                     };
                     let marshalled_request = serde_json::to_string(&request).unwrap();
 
-                    if let Err(_) = stream.write_all(marshalled_request.as_bytes()).await {
+                    if stream
+                        .write_all(marshalled_request.as_bytes())
+                        .await
+                        .is_err()
+                    {
                         continue;
                     }
 

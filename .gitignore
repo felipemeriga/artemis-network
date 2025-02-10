@@ -16,3 +16,6 @@ Cargo.lock
 
 # Added by cargo
 /target
+
+# Folder for adding files for testing locally
+/testers

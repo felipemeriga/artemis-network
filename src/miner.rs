@@ -49,7 +49,7 @@ impl Miner {
             // and this miner is configured to mine only when there are
             // transactions,
             // it won't start the process until a new transaction arrives
-            if data.len() <= 0 && !self.mine_without_transactions {
+            if data.is_empty() && !self.mine_without_transactions {
                 continue;
             }
 

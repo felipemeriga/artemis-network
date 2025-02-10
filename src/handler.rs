@@ -17,7 +17,7 @@ pub async fn submit_transaction(
 
     let public_key = match Wallet::public_key_from_hex_string(public_key_hex) {
         Ok(public_key) => public_key,
-        Err(err) => return HttpResponse::BadRequest().body("Invalid public key"),
+        Err(_) => return HttpResponse::BadRequest().body("Invalid public key"),
     };
 
     if tx.verify(&public_key) {
@@ -71,7 +71,7 @@ pub async fn sign_and_submit_transaction(
     let request = sign_transaction_request.into_inner();
     let wallet = match Wallet::from_hex_string(request.public_key_hex, request.private_key_hex) {
         Ok(wallet) => wallet,
-        Err(err) => return HttpResponse::BadRequest().body("Invalid wallet information"),
+        Err(_) => return HttpResponse::BadRequest().body("Invalid wallet information"),
     };
 
     let mut transaction = request.transaction;
@@ -100,13 +100,12 @@ pub async fn sign_and_submit_transaction(
 // You can use this struct for debugging purposes only
 #[post("/transaction/sign")]
 pub async fn sign_transaction(
-    handler: web::Data<Arc<ServerHandler>>,
     sign_transaction_request: web::Json<SignTransactionRequest>,
 ) -> impl Responder {
     let request = sign_transaction_request.into_inner();
     let wallet = match Wallet::from_hex_string(request.public_key_hex, request.private_key_hex) {
         Ok(wallet) => wallet,
-        Err(err) => return HttpResponse::BadRequest().body("Invalid wallet information"),
+        Err(_) => return HttpResponse::BadRequest().body("Invalid wallet information"),
     };
     let mut transaction = request.transaction;
     transaction.sign(&wallet);

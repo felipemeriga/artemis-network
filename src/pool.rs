@@ -137,7 +137,7 @@ impl TransactionPool {
         // There might be that transaction processed by another miner,
         // may be different from the ones we have in the pending queue.
         // Therefore, we need to return the pending queue back to the heap.
-        if self.pending_map.len() > 0 {
+        if !self.pending_map.is_empty() {
             let tx_to_add: Vec<_> = self.pending_map.values().cloned().collect();
             self.pending_map.clear();
 
@@ -146,5 +146,4 @@ impl TransactionPool {
             }
         }
     }
-
 }

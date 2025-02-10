@@ -76,11 +76,6 @@ impl ServerHandler {
         Ok(())
     }
 
-    /// Handles new transactions submitted via HTTP
-    pub(crate) async fn handle_new_transaction(&self, transaction: Transaction) -> bool {
-        true
-    }
-
     pub async fn handle_connection(&self, mut stream: TcpStream) {
         let mut buffer = [0; 1024];
         if let Ok(n) = stream.read(&mut buffer).await {

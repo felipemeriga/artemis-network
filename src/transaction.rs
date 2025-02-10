@@ -1,12 +1,10 @@
 use crate::wallet::Wallet;
-use hex;
 use ordered_float::OrderedFloat;
 use secp256k1::ecdsa::Signature;
 use secp256k1::{Message, Secp256k1};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::cmp::Ordering;
-use std::collections::HashMap;
 
 // WARNING - This struct should be used for learning purposes only.
 // Sharing public and private key, inside requests is a totally risky.
@@ -84,6 +82,7 @@ impl PartialOrd for Transaction {
 
 impl Transaction {
     /// Create a new transaction (unsigned)
+    #[allow(dead_code)]
     pub fn new(sender: String, recipient: String, amount: f64, fee: f64, timestamp: i64) -> Self {
         Transaction {
             sender,
@@ -152,14 +151,5 @@ impl Transaction {
 
         let tx_hash = Sha256::digest(tx_data.as_bytes());
         hex::encode(tx_hash)
-    }
-
-    /// Check if sender has sufficient balance before signing the transaction
-    pub fn has_sufficient_balance(&self, balances: &HashMap<String, f64>) -> bool {
-        if let Some(balance) = balances.get(&self.sender) {
-            *balance >= *(self.amount + self.fee)
-        } else {
-            false // Sender not found in balance list
-        }
     }
 }
