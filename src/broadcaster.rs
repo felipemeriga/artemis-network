@@ -1,5 +1,6 @@
 use crate::block::Block;
 use crate::server::Request;
+use crate::transaction::Transaction;
 use crate::{broadcaster_error, broadcaster_info};
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
@@ -15,16 +16,10 @@ impl Broadcaster {
         Self { peers }
     }
 
-    pub async fn broadcast_new_block(&self, block: &Block, excluded_peers: Option<Vec<String>>) {
+    pub async fn broadcast_new_block(&self, block: &Block) {
         broadcaster_info!("broadcasting new block to peers");
         let peers_list = self.peers.lock().await.clone();
-        let excluded_peers = excluded_peers.unwrap_or_default();
         for peer in peers_list {
-            if excluded_peers.contains(&peer) {
-                broadcaster_info!("Discarding peer {} from broadcasting", peer);
-                continue;
-            }
-
             if let Ok(mut stream) = TcpStream::connect(&peer).await {
                 let request = Request {
                     command: "new_block".to_string(),
@@ -34,6 +29,24 @@ impl Broadcaster {
                 let serialized_request = serde_json::to_string(&request).unwrap();
                 if let Err(e) = stream.write_all(serialized_request.as_bytes()).await {
                     broadcaster_error!("Failed to send block to {}: {}", peer, e);
+                }
+            }
+        }
+    }
+
+    pub async fn broadcast_transaction(&self, transaction: Transaction) {
+        broadcaster_info!("broadcasting new transaction to peers");
+        let peers_list = self.peers.lock().await.clone();
+        for peer in peers_list {
+            if let Ok(mut stream) = TcpStream::connect(&peer).await {
+                let request = Request {
+                    command: "transaction".to_string(),
+                    data: serde_json::to_string(&transaction).unwrap(),
+                };
+
+                let serialized_request = serde_json::to_string(&request).unwrap();
+                if let Err(e) = stream.write_all(serialized_request.as_bytes()).await {
+                    broadcaster_error!("Failed to send transaction to {}: {}", peer, e);
                 }
             }
         }
