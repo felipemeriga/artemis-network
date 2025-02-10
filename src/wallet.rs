@@ -1,5 +1,4 @@
 use crate::error::WalletError;
-use hex;
 use secp256k1::rand::rngs::OsRng;
 use secp256k1::{PublicKey, Secp256k1, SecretKey};
 use serde::{Deserialize, Serialize};
@@ -58,7 +57,7 @@ impl Wallet {
         let pub_key_bytes = self.public_key.serialize();
 
         // Hash the public key using SHA-256
-        let sha256_hash = Sha256::digest(&pub_key_bytes);
+        let sha256_hash = Sha256::digest(pub_key_bytes);
 
         // Return the address as a hex-encoded string
         hex::encode(sha256_hash)

@@ -67,6 +67,7 @@ impl Blockchain {
         self.chain = new_chain;
     }
 
+    #[allow(dead_code)]
     pub fn mine_new_block(&self, data: Vec<Transaction>) -> Block {
         let (mut mined_block, difficult) = self.prepare_block_for_mining(data);
         mined_block.mine(difficult);
@@ -89,11 +90,5 @@ impl Blockchain {
 
     pub fn get_chain(&self) -> Vec<Block> {
         self.chain.clone()
-    }
-
-    pub fn sync_chain(&mut self, other_chain: Vec<Block>) {
-        if other_chain.len() > self.chain.len() {
-            self.chain = other_chain;
-        }
     }
 }

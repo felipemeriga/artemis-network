@@ -1,5 +1,4 @@
 use crate::transaction::Transaction;
-use hex;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 // Import the necessary traits and types
@@ -56,10 +55,11 @@ impl Block {
     }
 
     // Mine the block (PoW)
+    #[allow(dead_code)]
     pub fn mine(&mut self, difficulty: usize) {
         let target = "0".repeat(difficulty); // Target hash difficulty (e.g., "0000...")
 
-        while &self.hash[..difficulty] != target {
+        while self.hash[..difficulty] != target {
             self.nonce += 1;
             self.hash = self.calculate_hash();
         }

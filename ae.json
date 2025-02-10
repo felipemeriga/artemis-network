@@ -1,1 +1,0 @@
-{ "command": "new_block", "data": "{\"index\":1,\"timestamp\":1738088489,\"data\":\"Block at 2025-01-28 18:21:29.352869617 UTC\",\"previous_hash\":\"4ab3cbc31380fe9b088b1e7a92a344692b086eaac010b8c56e8c5e975fb6463a\",\"hash\":\"00000316b08d47114d7341008d7507e20145c72739a5fe8550e964886a8b3f9d\",\"nonce\":2027085}"}

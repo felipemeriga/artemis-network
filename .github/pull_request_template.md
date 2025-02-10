@@ -1,7 +1,7 @@
 ## PR Name
 
 When creating a PR,
-name it in the format `[TAG] - <change tittle>`,the `TAG` field can be either `ENHANCEMENT`,`BUGFIX`,
+name it in the format `[TAG] - <change tittle>`,the `TAG` field can be either `ENHANCEMENT`,`FIX`,
 `FEATURE` or `RELEASE`.
 
 ## Description
