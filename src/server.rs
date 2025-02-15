@@ -1,6 +1,7 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
 use crate::broadcaster::Broadcaster;
+use crate::discover::Peer;
 use crate::handler::{
     create_wallet, health_check, sign_and_submit_transaction, sign_transaction, submit_transaction,
 };
@@ -9,6 +10,7 @@ use crate::transaction::Transaction;
 use crate::{server_error, server_info, server_warn};
 use actix_web::{web, App, HttpServer};
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
@@ -27,6 +29,7 @@ pub struct ServerHandler {
     block_tx: Arc<Mutex<Sender<Option<Block>>>>,
     pub broadcaster: Arc<Mutex<Broadcaster>>,
     pub transaction_pool: Arc<Mutex<TransactionPool>>,
+    pub peers: Arc<Mutex<HashSet<String>>>,
 }
 
 impl ServerHandler {
@@ -35,12 +38,14 @@ impl ServerHandler {
         block_tx: Arc<Mutex<Sender<Option<Block>>>>,
         broadcaster: Arc<Mutex<Broadcaster>>,
         transaction_pool: Arc<Mutex<TransactionPool>>,
+        peers: Arc<Mutex<HashSet<String>>>,
     ) -> Self {
         Self {
             blockchain,
             block_tx,
             broadcaster,
             transaction_pool,
+            peers,
         }
     }
 
@@ -123,6 +128,25 @@ impl ServerHandler {
                         let chain = self.blockchain.read().await.get_chain();
                         let response = serde_json::to_string(&chain).unwrap();
                         let _ = stream.write_all(response.as_bytes()).await;
+                    }
+                    "register" => {
+                        if let Ok(peer) = serde_json::from_str::<Peer>(&req.data) {
+                            let peers = {
+                                let mut peers_lock = self.peers.lock().await;
+                                if !peers_lock.contains(&peer.address) {
+                                    server_info!(
+                                        "received a new peer in address: {}",
+                                        peer.address
+                                    );
+                                    peers_lock.insert(peer.address);
+                                }
+                                peers_lock.clone()
+                            };
+                            let response = serde_json::to_string(&peers).unwrap();
+                            let _ = stream.write_all(response.as_bytes()).await;
+                        } else {
+                            server_warn!("Invalid new peer received")
+                        }
                     }
                     _ => server_error!("Unknown command: {}", req.command),
                 }

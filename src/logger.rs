@@ -93,6 +93,27 @@ macro_rules! sync_warn {
     };
 }
 
+#[macro_export]
+macro_rules! discover_info {
+    ($($arg:tt)*) => {
+        info!(target: "discover", "{}", format_args!($($arg)*))
+    };
+}
+
+#[macro_export]
+macro_rules! discover_error {
+    ($($arg:tt)*) => {
+        error!(target: "discover", "{}", format_args!($($arg)*))
+    };
+}
+
+#[macro_export]
+macro_rules! discover_warn {
+    ($($arg:tt)*) => {
+        warn!(target: "discover", "{}", format_args!($($arg)*))
+    };
+}
+
 pub fn init_logger() {
     Builder::new()
         .filter(None, LevelFilter::Debug) // Keep all debug logs
@@ -106,6 +127,7 @@ pub fn init_logger() {
                 "miner" => "[MINER]",
                 "broadcaster" => "[BROADCASTER]",
                 "sync" => "[SYNC]",
+                "discover" => "[DISCOVER]",
                 _ => "[GENERAL]", // Default prefix
             };
             writeln!(

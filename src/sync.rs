@@ -2,6 +2,7 @@ use crate::block::Block;
 use crate::blockchain::Blockchain;
 use crate::server::Request;
 use crate::sync_info;
+use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
@@ -10,14 +11,14 @@ use tokio::sync::{Mutex, RwLock};
 
 pub struct Sync {
     blockchain: Arc<RwLock<Blockchain>>,
-    peers: Arc<Mutex<Vec<String>>>,
+    peers: Arc<Mutex<HashSet<String>>>,
     block_tx: Arc<Mutex<Sender<Option<Block>>>>,
 }
 
 impl Sync {
     pub fn new(
         blockchain: Arc<RwLock<Blockchain>>,
-        peers: Arc<Mutex<Vec<String>>>,
+        peers: Arc<Mutex<HashSet<String>>>,
         watch_tx: Arc<Mutex<Sender<Option<Block>>>>,
     ) -> Self {
         Self {
@@ -27,14 +28,19 @@ impl Sync {
         }
     }
 
-    pub async fn sync_with_peers(&mut self) {
+    pub async fn sync_with_peers(&mut self, tcp_address: String) {
+        // first 10-second sleep for giving time for finding new peers
+        tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
         loop {
-            let peers = self.peers.lock().await.clone();
+            let peers = { self.peers.lock().await.clone() };
             let mut longest_chain = None;
             let mut max_length = self.blockchain.read().await.get_chain().len();
 
-            for peer in peers {
-                if let Ok(mut stream) = TcpStream::connect(&peer).await {
+            for peer_address in peers {
+                if peer_address == tcp_address {
+                    continue;
+                }
+                if let Ok(mut stream) = TcpStream::connect(&peer_address).await {
                     let request = Request {
                         command: "get_blockchain".to_string(),
                         data: "".to_string(),
@@ -79,7 +85,7 @@ impl Sync {
             }
 
             // Sleep for some time before the next sync
-            tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
+            tokio::time::sleep(tokio::time::Duration::from_secs(120)).await;
         }
     }
 }
