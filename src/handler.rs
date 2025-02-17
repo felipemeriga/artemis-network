@@ -140,3 +140,24 @@ pub async fn get_transaction_by_hash(
     }
 }
 
+#[get("/transaction/wallet/{address}")]
+pub async fn get_transactions_by_wallet(
+    handler: web::Data<Arc<ServerHandler>>, // Assuming `ServerHandler` provides methods for fetching transactions
+    path: web::Path<String>,               // The transaction hash passed as a URL parameter
+) -> impl Responder {
+    let address = path.into_inner(); // Extract the transaction hash from the path
+    if address.is_empty() {
+        return HttpResponse::BadRequest().body("Invalid wallet address")
+    };
+    let server_handler = handler.into_inner();
+
+    let result =   server_handler.database.lock().await.get_transactions_by_wallet(address.as_str());
+
+    match result {
+        Ok(transactions) => HttpResponse::Ok().json(transactions),
+        Err(err) => {
+            HttpResponse::InternalServerError().body(err.to_string())
+        }
+    }
+}
+

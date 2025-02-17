@@ -63,4 +63,23 @@ impl Database {
             None => Ok(None),
         }
     }
+
+    pub fn get_transactions_by_wallet(&self, wallet: &str) -> Result<Vec<Transaction>, DatabaseError> {
+        let key = format!("addr_{}", wallet);
+        match self.db.get(key)? {
+            Some(value) => {
+                let tx_hashes: Vec<String> = bincode::deserialize(&value).map_err(|_| DatabaseError::BinCodeError)?;
+                let mut transactions = vec![];
+
+                for tx_hash in tx_hashes {
+                    if let Some(tx) = self.get_transaction(&tx_hash)? {
+                        transactions.push(tx);
+                    }
+                }
+
+                Ok(transactions)
+            }
+            None => Ok(vec![]),
+        }
+    }
 }
