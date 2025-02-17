@@ -55,7 +55,7 @@ impl Sync {
                         continue;
                     }
 
-                    let mut buffer = [0; 100000];
+                    let mut buffer = [0; 8184];
                     if let Ok(n) = stream.read(&mut buffer).await {
                         let data = String::from_utf8_lossy(&buffer[..n]);
                         if let Ok(peer_chain) = serde_json::from_str::<Vec<Block>>(&data) {
