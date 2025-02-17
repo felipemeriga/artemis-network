@@ -10,6 +10,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::{mpsc::channel, Mutex, RwLock};
 use uuid::Uuid;
+use crate::db::Database;
 
 pub struct Node {
     pub blockchain: Arc<RwLock<Blockchain>>,
@@ -33,6 +34,7 @@ impl Node {
         let mut peers_set = HashSet::new();
         peers_set.insert(tcp_address.clone());
         let peers = Arc::new(Mutex::new(peers_set));
+        let database = Arc::new(Mutex::new(Database::new()));
 
         let (block_tx, block_rx) = channel::<Option<Block>>(20);
 
@@ -74,6 +76,7 @@ impl Node {
             miner_broadcaster,
             block_rx,
             miner_tx_pool,
+            database,
             true,
             1,
         );

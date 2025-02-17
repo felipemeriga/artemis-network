@@ -16,6 +16,7 @@ mod sync;
 mod tests;
 mod transaction;
 mod wallet;
+mod db;
 
 use crate::logger::init_logger;
 use crate::node::Node;

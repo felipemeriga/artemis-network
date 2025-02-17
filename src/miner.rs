@@ -8,12 +8,14 @@ use std::time::Instant;
 use tokio::select;
 use tokio::sync::{mpsc::Receiver, Mutex, RwLock};
 use tokio::time::Duration;
+use crate::db::Database;
 
 pub struct Miner {
     blockchain: Arc<RwLock<Blockchain>>,
     broadcaster: Arc<Mutex<Broadcaster>>,
     block_rx: Receiver<Option<Block>>,
     transaction_pool: Arc<Mutex<TransactionPool>>,
+    database: Arc<Mutex<Database>>,
     mine_without_transactions: bool,
     transactions_per_block: i32,
 }
@@ -24,6 +26,7 @@ impl Miner {
         broadcaster: Arc<Mutex<Broadcaster>>,
         block_rx: Receiver<Option<Block>>,
         transaction_pool: Arc<Mutex<TransactionPool>>,
+        database: Arc<Mutex<Database>>,
         mine_without_transactions: bool,
         transactions_per_block: i32,
     ) -> Self {
@@ -32,6 +35,7 @@ impl Miner {
             broadcaster,
             block_rx,
             transaction_pool,
+            database,
             mine_without_transactions,
             transactions_per_block,
         }
@@ -124,6 +128,16 @@ impl Miner {
                             .broadcast_new_block(&new_block)
                             .await;
                     }
+                    let transaction_to_save = new_block.transactions.get(0).unwrap();
+                    match self.database.lock().await.store_transaction(transaction_to_save, &*transaction_to_save.hash()) {
+                        Ok(_) => {
+                            miner_info!("Transaction saved to database");
+                        },
+                        Err(e) => {
+                            miner_info!("Error saving transaction to database: {}", e);
+                        }
+                    };
+
                     // Adding a 2-second delay on the miner that wins to make the process fair
                     // In production blockchains,
                     // like bitcoin's, there are a lot of built-in redundancy
