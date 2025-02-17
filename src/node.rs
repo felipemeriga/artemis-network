@@ -1,35 +1,47 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
 use crate::broadcaster::Broadcaster;
+use crate::discover::Discover;
 use crate::miner::Miner;
 use crate::pool::TransactionPool;
 use crate::server::ServerHandler;
 use crate::sync::Sync;
+use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::{mpsc::channel, Mutex, RwLock};
+use uuid::Uuid;
 
 pub struct Node {
     pub blockchain: Arc<RwLock<Blockchain>>,
-    pub peers: Arc<Mutex<Vec<String>>>, // List of peers (IP:PORT)
 }
 
 impl Node {
-    pub fn new(peers: Vec<String>) -> Self {
+    pub fn new() -> Self {
         Node {
             blockchain: Arc::new(RwLock::new(Blockchain::new())),
-            peers: Arc::new(Mutex::new(peers)),
         }
     }
 
-    pub async fn start(&self, tcp_address: String, http_address: String) {
+    pub async fn start(
+        &self,
+        tcp_address: String,
+        http_address: String,
+        bootstrap_address: String,
+    ) {
+        let miner_id = Uuid::new_v4().to_string(); // Unique ID for this miner
         let blockchain = self.blockchain.clone();
-        let peers = self.peers.clone();
+        let mut peers_set = HashSet::new();
+        peers_set.insert(tcp_address.clone());
+        let peers = Arc::new(Mutex::new(peers_set));
 
         let (block_tx, block_rx) = channel::<Option<Block>>(20);
 
         let tx = Arc::new(Mutex::new(block_tx));
         let server_tx = tx.clone();
-        let broadcaster = Arc::new(Mutex::new(Broadcaster::new(peers)));
+        let broadcaster = Arc::new(Mutex::new(Broadcaster::new(
+            peers.clone(),
+            tcp_address.clone(),
+        )));
         let transaction_pool = Arc::new(Mutex::new(TransactionPool::new()));
 
         let server_broadcaster = broadcaster.clone();
@@ -40,6 +52,7 @@ impl Node {
             server_tx,
             server_broadcaster,
             server_tx_pool,
+            peers.clone(),
         ));
 
         // TCP Server will be used for p2p communication between nodes
@@ -49,10 +62,9 @@ impl Node {
 
         // Spawn a client task for syncing
         let blockchain = self.blockchain.clone();
-        let peers = self.peers.clone();
         let sync_tx = tx.clone();
 
-        let mut sync = Sync::new(blockchain, peers, sync_tx);
+        let mut sync = Sync::new(blockchain, peers.clone(), sync_tx);
 
         let blockchain = self.blockchain.clone();
         let miner_broadcaster = broadcaster.clone();
@@ -66,16 +78,32 @@ impl Node {
             1,
         );
 
+        let mut discover = None;
+
+        if !bootstrap_address.is_empty() {
+            let peers = peers.clone();
+            discover = Some(Discover::new(peers));
+        }
+
         // Run everything concurrently
         let _ = tokio::join!(
             async {
-                tcp_server.start_tcp_server(tcp_address).await.unwrap();
+                if let Some(mut dsc) = discover {
+                    dsc.find_peers(miner_id, tcp_address.clone(), bootstrap_address)
+                        .await;
+                }
+            },
+            async {
+                tcp_server
+                    .start_tcp_server(tcp_address.clone())
+                    .await
+                    .unwrap();
             },
             async {
                 http_server.start_http_server(http_address).await.unwrap();
             },
             async {
-                sync.sync_with_peers().await;
+                sync.sync_with_peers(tcp_address.clone()).await;
             },
             async {
                 miner.mine().await;
@@ -83,3 +111,7 @@ impl Node {
         );
     }
 }
+
+// fn validate_ip_with_port(s: &str) -> Result<SocketAddr, std::net::AddrParseError> {
+//     s.parse()
+// }

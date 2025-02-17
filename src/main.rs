@@ -4,6 +4,7 @@ extern crate log;
 mod block;
 mod blockchain;
 mod broadcaster;
+mod discover;
 mod error;
 mod handler;
 mod logger;
@@ -32,9 +33,9 @@ struct Args {
     #[arg(short, long)]
     rpc_bind: String,
 
-    /// List of peer nodes (comma-separated, e.g., 127.0.0.1:8333,192.168.1.1:8333)
+    /// Address of the bootstrap node for registering as a new peer (full-nodes will leave this empty)
     #[arg(short, long, default_value = "")]
-    peers: String,
+    bootstrap_address: String,
 }
 
 #[tokio::main]
@@ -51,13 +52,9 @@ async fn main() {
     let http_bind_addr = args.rpc_bind;
 
     // Extract peers
-    let peers: Vec<String> = args
-        .peers
-        .split(',')
-        .filter(|peer| !peer.is_empty()) // Remove empty strings from split
-        .map(|peer| peer.to_string())
-        .collect();
+    let bootstrap_address = args.bootstrap_address;
 
-    let node = Node::new(peers);
-    node.start(tcp_bind_addr, http_bind_addr).await;
+    let node = Node::new();
+    node.start(tcp_bind_addr, http_bind_addr, bootstrap_address)
+        .await;
 }

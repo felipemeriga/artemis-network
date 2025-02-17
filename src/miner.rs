@@ -38,6 +38,8 @@ impl Miner {
     }
 
     pub async fn mine(&mut self) {
+        // First 15-seconds sleep, for giving time for collecting first peers and new chain
+        tokio::time::sleep(Duration::from_secs(15)).await;
         loop {
             let data = {
                 self.transaction_pool
@@ -122,6 +124,11 @@ impl Miner {
                             .broadcast_new_block(&new_block)
                             .await;
                     }
+                    // Adding a 2-second delay on the miner that wins to make the process fair
+                    // In production blockchains,
+                    // like bitcoin's, there are a lot of built-in redundancy
+                    // and mechanisms to handle edge cases.
+                    tokio::time::sleep(Duration::from_secs(2)).await;
                 } else {
                     miner_info!("Mining became invalid due to a chain update.");
                     continue; // Restart the mining loop
@@ -129,7 +136,7 @@ impl Miner {
             }
 
             // Reset and restart on interruption or completion
-            tokio::time::sleep(Duration::from_secs(1)).await;
+            // tokio::time::sleep(Duration::from_secs(1)).await;
             miner_info!("Restarting mining...");
         }
     }
