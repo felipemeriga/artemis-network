@@ -1,6 +1,8 @@
 use std::io;
 use thiserror::Error;
 
+
+
 #[derive(Error, Debug)]
 pub enum WalletError {
     #[error("Hex Decode Error: {source}")]
@@ -30,3 +32,6 @@ pub enum DatabaseError {
         source: io::Error,
     }
 }
+
+
+

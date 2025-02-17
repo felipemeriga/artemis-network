@@ -1,22 +1,35 @@
-use sled::{Db};
 use crate::error::DatabaseError;
 use crate::transaction::Transaction;
+use sled::Db;
 
 pub struct Database {
-    pub db: Db
+    pub db: Db,
 }
-
 
 impl Database {
     pub fn new() -> Self {
-        let temp_dir = std::env::temp_dir().join("blockchain_db");
-        let db = sled::open(temp_dir).unwrap();
+        let db_path = "blockchain_db";
+
+        // If running over dev feature, the DB will be recreated every time we run the program again
+        #[cfg(feature = "dev")]
+        {
+            use std::fs;
+            // Remove the old database directory if it exists
+            if fs::metadata(db_path).is_ok() {
+                fs::remove_dir_all(db_path).expect("Failed to delete existing DB folder");
+            }
+        }
+
+        let db = sled::open(db_path).unwrap();
         Self { db }
     }
 
     pub fn store_transaction(&self, tx: &Transaction, tx_hash: &str) -> Result<(), DatabaseError> {
         // Store transaction by hash
-        self.db.insert(tx_hash, bincode::serialize(tx).map_err(|_| DatabaseError::BinCodeError)?)?;
+        self.db.insert(
+            tx_hash,
+            bincode::serialize(tx).map_err(|_| DatabaseError::BinCodeError)?,
+        )?;
 
         // Index transaction by sender
         let sender_key = format!("addr_{}", tx.sender);
@@ -35,16 +48,19 @@ impl Database {
 
         if !tx_list.contains(&tx_hash.to_string()) {
             tx_list.push(tx_hash.to_string());
-            self.db.insert(key, bincode::serialize(&tx_list).map_err(|_| DatabaseError::BinCodeError)?)?;
+            self.db.insert(
+                key,
+                bincode::serialize(&tx_list).map_err(|_| DatabaseError::BinCodeError)?,
+            )?;
         }
 
         Ok(())
     }
 
-    // fn get_transaction(db: &Db, tx_hash: &str) -> Result<Option<Transaction>, Box<dyn Error>> {
-    //     match db.get(tx_hash)? {
-    //         Some(value) => Ok(Some(bincode::deserialize(&value)?)),
-    //         None => Ok(None),
-    //     }
-    // }
+    pub fn get_transaction(&self, tx_hash: &str) -> Result<Option<Transaction>, DatabaseError> {
+        match self.db.get(tx_hash)? {
+            Some(value) => Ok(Some(bincode::deserialize(&value).map_err(|_| DatabaseError::BinCodeError)?)),
+            None => Ok(None),
+        }
+    }
 }

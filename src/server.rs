@@ -2,9 +2,7 @@ use crate::block::Block;
 use crate::blockchain::Blockchain;
 use crate::broadcaster::Broadcaster;
 use crate::discover::Peer;
-use crate::handler::{
-    create_wallet, health_check, sign_and_submit_transaction, sign_transaction, submit_transaction,
-};
+use crate::handler::{create_wallet, get_transaction_by_hash, health_check, sign_and_submit_transaction, sign_transaction, submit_transaction};
 use crate::pool::TransactionPool;
 use crate::transaction::Transaction;
 use crate::{server_error, server_info, server_warn};
@@ -16,6 +14,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc::Sender;
 use tokio::sync::{Mutex, RwLock};
+use crate::db::Database;
 
 #[derive(Serialize, Deserialize)]
 pub struct Request {
@@ -30,6 +29,7 @@ pub struct ServerHandler {
     pub broadcaster: Arc<Mutex<Broadcaster>>,
     pub transaction_pool: Arc<Mutex<TransactionPool>>,
     pub peers: Arc<Mutex<HashSet<String>>>,
+    pub database: Arc<Mutex<Database>>
 }
 
 impl ServerHandler {
@@ -39,6 +39,7 @@ impl ServerHandler {
         broadcaster: Arc<Mutex<Broadcaster>>,
         transaction_pool: Arc<Mutex<TransactionPool>>,
         peers: Arc<Mutex<HashSet<String>>>,
+        database: Arc<Mutex<Database>>,
     ) -> Self {
         Self {
             blockchain,
@@ -46,6 +47,7 @@ impl ServerHandler {
             broadcaster,
             transaction_pool,
             peers,
+            database,
         }
     }
 
@@ -61,6 +63,7 @@ impl ServerHandler {
                 .service(create_wallet)
                 .service(sign_and_submit_transaction)
                 .service(sign_transaction)
+                .service(get_transaction_by_hash)
         })
         .bind(http_addr)?
         .run()

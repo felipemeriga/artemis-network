@@ -128,15 +128,18 @@ impl Miner {
                             .broadcast_new_block(&new_block)
                             .await;
                     }
-                    let transaction_to_save = new_block.transactions.get(0).unwrap();
-                    match self.database.lock().await.store_transaction(transaction_to_save, &*transaction_to_save.hash()) {
-                        Ok(_) => {
-                            miner_info!("Transaction saved to database");
-                        },
-                        Err(e) => {
-                            miner_info!("Error saving transaction to database: {}", e);
-                        }
-                    };
+                    let transaction_to_save = new_block.transactions.first();
+                    if transaction_to_save.is_some() {
+                        let tx = transaction_to_save.unwrap();
+                        match self.database.lock().await.store_transaction(tx, &tx.hash()) {
+                            Ok(_) => {
+                                miner_info!("Transaction saved to database");
+                            },
+                            Err(e) => {
+                                miner_info!("Error saving transaction to database: {}", e);
+                            }
+                        };
+                    }
 
                     // Adding a 2-second delay on the miner that wins to make the process fair
                     // In production blockchains,

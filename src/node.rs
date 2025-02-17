@@ -55,6 +55,7 @@ impl Node {
             server_broadcaster,
             server_tx_pool,
             peers.clone(),
+            database.clone()
         ));
 
         // TCP Server will be used for p2p communication between nodes
@@ -76,7 +77,7 @@ impl Node {
             miner_broadcaster,
             block_rx,
             miner_tx_pool,
-            database,
+            database.clone(),
             true,
             1,
         );

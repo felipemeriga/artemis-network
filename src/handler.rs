@@ -112,3 +112,31 @@ pub async fn sign_transaction(
 
     HttpResponse::Ok().json(transaction)
 }
+
+
+#[get("/transaction/{hash}")]
+pub async fn get_transaction_by_hash(
+    handler: web::Data<Arc<ServerHandler>>, // Assuming `ServerHandler` provides methods for fetching transactions
+    path: web::Path<String>,               // The transaction hash passed as a URL parameter
+) -> impl Responder {
+    let hash = path.into_inner(); // Extract the transaction hash from the path
+    if hash.is_empty() {
+        return HttpResponse::BadRequest().body("Invalid transaction hash")
+    };
+    let server_handler = handler.into_inner();
+    
+    let result =   server_handler.database.lock().await.get_transaction(hash.as_str());
+    
+    match result {
+        Ok(option) => {
+            match option {
+                None => HttpResponse::NotFound().into(),
+                Some(tx) => HttpResponse::Ok().json(tx)
+            }
+        }
+        Err(err) => {
+            HttpResponse::InternalServerError().body(err.to_string())
+        }
+    }
+}
+
