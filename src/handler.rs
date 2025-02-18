@@ -142,8 +142,8 @@ pub async fn get_transaction_by_hash(
 
 #[get("/transaction/wallet/{address}")]
 pub async fn get_transactions_by_wallet(
-    handler: web::Data<Arc<ServerHandler>>, // Assuming `ServerHandler` provides methods for fetching transactions
-    path: web::Path<String>,               // The transaction hash passed as a URL parameter
+    handler: web::Data<Arc<ServerHandler>>, 
+    path: web::Path<String>,              
 ) -> impl Responder {
     let address = path.into_inner(); // Extract the transaction hash from the path
     if address.is_empty() {
@@ -157,6 +157,28 @@ pub async fn get_transactions_by_wallet(
         Ok(transactions) => HttpResponse::Ok().json(transactions),
         Err(err) => {
             HttpResponse::InternalServerError().body(err.to_string())
+        }
+    }
+}
+
+#[get("/block/{hash}")]
+pub async fn get_block_by_hash(
+    handler: web::Data<Arc<ServerHandler>>, 
+    path: web::Path<String>,               
+) -> impl Responder {
+    let block_hash = path.into_inner();
+    if block_hash.is_empty() {
+        return HttpResponse::BadRequest().body("Invalid block hash")
+    };
+
+    let server_handler = handler.into_inner();
+    
+    let result = server_handler.database.lock().await.get_block(block_hash.as_str());
+
+    match result {
+        Some(block) => HttpResponse::Ok().json(block),
+        None => {
+            HttpResponse::NotFound().body("The block was not found")
         }
     }
 }

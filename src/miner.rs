@@ -1,6 +1,7 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
 use crate::broadcaster::Broadcaster;
+use crate::db::Database;
 use crate::miner_info;
 use crate::pool::TransactionPool;
 use std::sync::Arc;
@@ -8,7 +9,6 @@ use std::time::Instant;
 use tokio::select;
 use tokio::sync::{mpsc::Receiver, Mutex, RwLock};
 use tokio::time::Duration;
-use crate::db::Database;
 
 pub struct Miner {
     blockchain: Arc<RwLock<Blockchain>>,
@@ -46,10 +46,10 @@ impl Miner {
             {
                 if !*first_sync_done.lock().await {
                     tokio::time::sleep(Duration::from_secs(1)).await;
-                    continue
+                    continue;
                 }
             }
-            
+
             let data = {
                 self.transaction_pool
                     .lock()
@@ -133,18 +133,13 @@ impl Miner {
                             .broadcast_new_block(&new_block)
                             .await;
                     }
-                    let transaction_to_save = new_block.transactions.first();
-                    if transaction_to_save.is_some() {
-                        let tx = transaction_to_save.unwrap();
-                        match self.database.lock().await.store_transaction(tx, &tx.hash()) {
-                            Ok(_) => {
-                                miner_info!("Transaction saved to database");
-                            },
-                            Err(e) => {
-                                miner_info!("Error saving transaction to database: {}", e);
-                            }
-                        };
-                    }
+
+                    // Executing the database persistence concurrently
+                    let persist_block = new_block.clone();
+                    let database = self.database.clone();
+                    tokio::spawn(async move {
+                        Self::save_mine_result(database, persist_block).await;
+                    });
 
                     // Adding a 2-second delay on the miner that wins to make the process fair
                     // In production blockchains,
@@ -160,6 +155,37 @@ impl Miner {
             // Reset and restart on interruption or completion
             // tokio::time::sleep(Duration::from_secs(1)).await;
             miner_info!("Restarting mining...");
+        }
+    }
+
+    pub async fn save_mine_result(database: Arc<Mutex<Database>>, new_block: Block) {
+        {
+            let block_hash = new_block.hash.clone();
+            match database.lock().await.store_block(&new_block) {
+                Ok(_) => {
+                    miner_info!("block with hash {} saved to database", block_hash);
+                }
+                Err(err) => {
+                    miner_info!("Error saving block to database: {}", err);
+                }
+            };
+        }
+
+        let transactions_to_save = new_block.transactions.clone();
+        if !transactions_to_save.is_empty() {
+            for tx in transactions_to_save {
+                let tx_hash = tx.hash();
+                {
+                    match database.lock().await.store_transaction(&tx, &tx_hash) {
+                        Ok(_) => {
+                            miner_info!("Transaction with hash {} saved to database", tx_hash);
+                        }
+                        Err(e) => {
+                            miner_info!("Error saving transaction to database: {}", e);
+                        }
+                    };
+                }
+            }
         }
     }
 }

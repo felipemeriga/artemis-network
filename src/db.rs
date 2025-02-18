@@ -1,7 +1,7 @@
 use crate::error::DatabaseError;
 use crate::transaction::Transaction;
 use sled::Db;
-// use crate::block::Block;
+use crate::block::Block;
 
 pub struct Database {
     pub db: Db,
@@ -84,22 +84,22 @@ impl Database {
         }
     }
 
-    // pub fn store_block(&self, block: &Block) -> Result<(), DatabaseError> {
-    //     let key = format!("block:{}", block.hash);
-    //     let value = serde_json::to_vec(block).unwrap();
-    //     self.db.insert(key, value)?;
-    //     Ok(())
-    // }
-    // 
-    // pub fn get_block(&self, block_hash: &str) -> Option<Block> {
-    //     let key = format!("block:{}", block_hash);
-    //     if let Ok(Some(value)) = self.db.get(key) {
-    //         let block: Block = serde_json::from_slice(&value).unwrap();
-    //         return Some(block);
-    //     }
-    //     None
-    // }
-    // 
+    pub fn store_block(&self, block: &Block) -> Result<(), DatabaseError> {
+        let key = format!("block:{}", block.hash);
+        let value = serde_json::to_vec(block).unwrap();
+        self.db.insert(key, value)?;
+        Ok(())
+    }
+    
+    pub fn get_block(&self, block_hash: &str) -> Option<Block> {
+        let key = format!("block:{}", block_hash);
+        if let Ok(Some(value)) = self.db.get(key) {
+            let block: Block = serde_json::from_slice(&value).unwrap();
+            return Some(block);
+        }
+        None
+    }
+    
     // pub fn get_all_blocks(&self) -> Vec<Block> {
     //     let mut blocks = Vec::new();
     //     for item in self.db.scan_prefix("block:") {
