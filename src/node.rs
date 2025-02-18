@@ -11,7 +11,6 @@ use crate::sync::Sync;
 use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::{mpsc::channel, Mutex, RwLock};
-use uuid::Uuid;
 
 pub struct Node {
     pub blockchain: Arc<RwLock<Blockchain>>,
@@ -25,12 +24,11 @@ impl Node {
     }
 
     pub async fn start(&self, config: Config) {
-        let miner_id = Uuid::new_v4().to_string(); // Unique ID for this miner
         let blockchain = self.blockchain.clone();
         let mut peers_set = HashSet::new();
         peers_set.insert(config.tcp_address.clone());
         let peers = Arc::new(Mutex::new(peers_set));
-        let database = Arc::new(Mutex::new(Database::new()));
+        let database = Arc::new(Mutex::new(Database::new(config.node_id.clone())));
 
         let (block_tx, block_rx) = channel::<Option<Block>>(20);
 
@@ -113,7 +111,7 @@ impl Node {
             async {
                 if let Some(mut dsc) = discover {
                     dsc.find_peers(
-                        miner_id,
+                        config.node_id.clone(),
                         config.tcp_address.clone(),
                         config.bootstrap_address.unwrap(),
                         first_discover_done.clone(),

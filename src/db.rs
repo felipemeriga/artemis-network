@@ -8,20 +8,22 @@ pub struct Database {
 }
 
 impl Database {
-    pub fn new() -> Self {
-        let db_path = "blockchain_db";
+    pub fn new(node_id: String) -> Self {
+        let db_path_for_node = format!("./database/blockchain-db-{}", node_id);
 
         // If running over dev feature, the DB will be recreated every time we run the program again
         #[cfg(feature = "dev")]
         {
             use std::fs;
+
+            let path = db_path_for_node.clone();
             // Remove the old database directory if it exists
-            if fs::metadata(db_path).is_ok() {
-                fs::remove_dir_all(db_path).expect("Failed to delete existing DB folder");
+            if fs::metadata(path.clone()).is_ok() {
+                fs::remove_dir_all(path).expect("Failed to delete existing DB folder");
             }
         }
 
-        let db = sled::open(db_path).unwrap();
+        let db = sled::open(db_path_for_node).unwrap();
         Self { db }
     }
 
