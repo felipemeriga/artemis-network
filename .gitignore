@@ -20,4 +20,4 @@ Cargo.lock
 # Folder for adding files for testing locally
 /testers
 
-/blockchain_db
+/database
