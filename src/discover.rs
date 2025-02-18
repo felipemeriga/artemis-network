@@ -27,7 +27,7 @@ impl Discover {
         node_id: String,
         tcp_address: String,
         boostrap_address: String,
-        first_discover_done: Arc<Mutex<bool>>
+        first_discover_done: Arc<Mutex<bool>>,
     ) {
         loop {
             discover_info!("Looking for peers on bootstrap node");
@@ -76,7 +76,6 @@ impl Discover {
                 }
             }
 
-            
             // Using a mutex for letting other tasks aware that this process
             // executed at least once
             {

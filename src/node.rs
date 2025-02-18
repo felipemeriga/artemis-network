@@ -1,6 +1,7 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
 use crate::broadcaster::Broadcaster;
+use crate::config::Config;
 use crate::db::Database;
 use crate::discover::Discover;
 use crate::miner::Miner;
@@ -23,16 +24,11 @@ impl Node {
         }
     }
 
-    pub async fn start(
-        &self,
-        tcp_address: String,
-        http_address: String,
-        bootstrap_address: String,
-    ) {
+    pub async fn start(&self, config: Config) {
         let miner_id = Uuid::new_v4().to_string(); // Unique ID for this miner
         let blockchain = self.blockchain.clone();
         let mut peers_set = HashSet::new();
-        peers_set.insert(tcp_address.clone());
+        peers_set.insert(config.tcp_address.clone());
         let peers = Arc::new(Mutex::new(peers_set));
         let database = Arc::new(Mutex::new(Database::new()));
 
@@ -42,7 +38,7 @@ impl Node {
         let server_tx = tx.clone();
         let broadcaster = Arc::new(Mutex::new(Broadcaster::new(
             peers.clone(),
-            tcp_address.clone(),
+            config.tcp_address.clone(),
         )));
         let transaction_pool = Arc::new(Mutex::new(TransactionPool::new()));
 
@@ -91,7 +87,7 @@ impl Node {
 
         let mut discover = None;
 
-        if !bootstrap_address.is_empty() {
+        if config.bootstrap_address.is_some() {
             let peers = peers.clone();
             discover = Some(Discover::new(peers));
         } else {
@@ -104,19 +100,22 @@ impl Node {
         let _ = tokio::join!(
             async {
                 tcp_server
-                    .start_tcp_server(tcp_address.clone())
+                    .start_tcp_server(config.tcp_address.clone())
                     .await
                     .unwrap();
             },
             async {
-                http_server.start_http_server(http_address).await.unwrap();
+                http_server
+                    .start_http_server(config.http_address)
+                    .await
+                    .unwrap();
             },
             async {
                 if let Some(mut dsc) = discover {
                     dsc.find_peers(
                         miner_id,
-                        tcp_address.clone(),
-                        bootstrap_address,
+                        config.tcp_address.clone(),
+                        config.bootstrap_address.unwrap(),
                         first_discover_done.clone(),
                     )
                     .await;
@@ -124,7 +123,7 @@ impl Node {
             },
             async {
                 sync.sync_with_peers(
-                    tcp_address.clone(),
+                    config.tcp_address.clone(),
                     first_discover_done.clone(),
                     first_sync_done.clone(),
                 )

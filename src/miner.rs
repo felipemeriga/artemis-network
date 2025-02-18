@@ -96,10 +96,16 @@ impl Miner {
                             // check if the new incoming block,
                             // contains transactions that are present in this transaction pool
                             {
-                             self.transaction_pool.lock().await.process_mined_transactions(false, &new_block.unwrap().transactions);
+                             self.transaction_pool.lock().await.process_mined_transactions(false, &new_block.clone().unwrap().transactions);
                             }
-
                         }
+
+                        // Executing the database persistence concurrently
+                        let persist_block = new_block.clone().unwrap();
+                        let database = self.database.clone();
+                        tokio::spawn(async move {
+                            Self::save_mine_result(database, persist_block).await;
+                        });
                         break; // Exit the mining loop and restart
                     }
 

@@ -1,7 +1,7 @@
+use crate::block::Block;
 use crate::error::DatabaseError;
 use crate::transaction::Transaction;
 use sled::Db;
-use crate::block::Block;
 
 pub struct Database {
     pub db: Db,
@@ -60,16 +60,22 @@ impl Database {
 
     pub fn get_transaction(&self, tx_hash: &str) -> Result<Option<Transaction>, DatabaseError> {
         match self.db.get(tx_hash)? {
-            Some(value) => Ok(Some(bincode::deserialize(&value).map_err(|_| DatabaseError::BinCodeError)?)),
+            Some(value) => Ok(Some(
+                bincode::deserialize(&value).map_err(|_| DatabaseError::BinCodeError)?,
+            )),
             None => Ok(None),
         }
     }
 
-    pub fn get_transactions_by_wallet(&self, wallet: &str) -> Result<Vec<Transaction>, DatabaseError> {
+    pub fn get_transactions_by_wallet(
+        &self,
+        wallet: &str,
+    ) -> Result<Vec<Transaction>, DatabaseError> {
         let key = format!("addr_{}", wallet);
         match self.db.get(key)? {
             Some(value) => {
-                let tx_hashes: Vec<String> = bincode::deserialize(&value).map_err(|_| DatabaseError::BinCodeError)?;
+                let tx_hashes: Vec<String> =
+                    bincode::deserialize(&value).map_err(|_| DatabaseError::BinCodeError)?;
                 let mut transactions = vec![];
 
                 for tx_hash in tx_hashes {
@@ -90,7 +96,7 @@ impl Database {
         self.db.insert(key, value)?;
         Ok(())
     }
-    
+
     pub fn get_block(&self, block_hash: &str) -> Option<Block> {
         let key = format!("block:{}", block_hash);
         if let Ok(Some(value)) = self.db.get(key) {
@@ -99,7 +105,7 @@ impl Database {
         }
         None
     }
-    
+
     // pub fn get_all_blocks(&self) -> Vec<Block> {
     //     let mut blocks = Vec::new();
     //     for item in self.db.scan_prefix("block:") {
@@ -110,14 +116,14 @@ impl Database {
     //     }
     //     blocks
     // }
-    // 
+    //
     // // Store a list of blocks with all their internal transactions
     // pub fn store_blocks_and_transactions(&self, blocks: Vec<Block>) -> Result<(), DatabaseError> {
     //     // Loop through each block
     //     for block in blocks {
     //         // Store the block itself
     //         self.store_block(&block)?;
-    // 
+    //
     //         // Store all transactions in the block
     //         for tx in &block.transactions {
     //             let tx_hash = tx.hash();
