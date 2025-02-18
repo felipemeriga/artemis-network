@@ -4,7 +4,7 @@ use sha2::{Digest, Sha256};
 // Import the necessary traits and types
 // We will use hex encoding
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Block {
     pub index: u64,
     pub timestamp: u64,

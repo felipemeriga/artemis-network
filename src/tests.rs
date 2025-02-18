@@ -1,10 +1,15 @@
 #[cfg(test)]
 mod tests {
     use crate::blockchain;
+    use crate::blockchain::create_genesis_block;
+    use crate::config::load_config;
+    use crate::db::Database;
     use crate::pool::TransactionPool;
     use crate::transaction::Transaction;
     use crate::wallet::Wallet;
     use ordered_float::OrderedFloat;
+    use std::fs::write;
+    use std::string::String;
 
     #[test]
     fn create_dummy_blockchain() {
@@ -118,5 +123,78 @@ mod tests {
         let tx = pool.get_next_transaction().unwrap();
         assert_eq!(tx.amount, OrderedFloat::from(10.0));
         assert_eq!(tx.timestamp, 100);
+    }
+
+    fn initialize_database() -> crate::db::Database {
+        Database::new(String::from("test"))
+    }
+
+    fn dump_database() {
+        use std::fs;
+
+        let test_database_path = format!("./database/blockchain-db-{}", String::from("test"));
+
+        // Remove the old database directory if it exists
+        if fs::metadata(test_database_path.clone()).is_ok() {
+            fs::remove_dir_all(test_database_path).expect("Failed to delete existing DB folder");
+        }
+    }
+
+    #[test]
+    fn test_save_get_block() {
+        let db = initialize_database();
+        let block = create_genesis_block();
+        db.store_block(&block).unwrap();
+        let block_from_db = db.get_block(block.hash.as_str()).unwrap();
+        assert_eq!(block, block_from_db);
+        dump_database();
+    }
+
+    #[test]
+    fn test_load_config_success() {
+        let file_path = "test_config.yaml";
+        let yaml_content = r#"
+        tcpAddress: "127.0.0.1:8080"
+        httpAddress: "127.0.0.1:3000"
+        bootstrapAddress: "127.0.0.1:4000"
+        nodeId: "node-123"
+        "#;
+
+        // Write test data to a temporary file
+        write(file_path, yaml_content).expect("Failed to write test configuration file.");
+
+        // Call the load_config function
+        let config = load_config(file_path).expect("Failed to load config.");
+
+        // Validate the loaded config
+        assert_eq!(config.tcp_address, "127.0.0.1:8080");
+        assert_eq!(config.http_address, "127.0.0.1:3000");
+        assert_eq!(config.bootstrap_address, Some("127.0.0.1:4000".to_string()));
+        assert_eq!(config.node_id, "node-123");
+
+        // Cleanup test file
+        std::fs::remove_file(file_path).expect("Failed to remove test file.");
+    }
+
+    #[test]
+    fn test_load_config_invalid_yaml() {
+        let file_path = "invalid_config.yaml";
+        let invalid_yaml_content = r#"
+        tcpAddress: 127.0.0.1:8080
+        httpAddress: [INVALID key]
+        nodeId: "node-123"
+        "#;
+
+        // Write invalid test data to a temporary file
+        write(file_path, invalid_yaml_content).expect("Failed to write test configuration file.");
+
+        // Call the load_config function
+        let result = load_config(file_path);
+
+        // Check that the function returns an error
+        assert!(result.is_err());
+
+        // Cleanup test file
+        std::fs::remove_file(file_path).expect("Failed to remove test file.");
     }
 }

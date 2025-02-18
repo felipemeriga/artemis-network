@@ -23,8 +23,11 @@ impl Database {
             }
         }
 
-        let db = sled::open(db_path_for_node).unwrap();
-        Self { db }
+        if let Ok(db) = sled::open(db_path_for_node) {
+            Self { db }
+        } else {
+            panic!("Failed to open database");
+        }
     }
 
     pub fn store_transaction(&self, tx: &Transaction, tx_hash: &str) -> Result<(), DatabaseError> {

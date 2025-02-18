@@ -14,7 +14,7 @@ impl Blockchain {
         // let genesis_block = Block::new(0, 0, vec![], "0".to_string());
         let blockchain = Blockchain {
             chain: vec![genesis_block],
-            difficulty: 5, // Set the PoW difficulty (e.g., 4 leading zeros)
+            difficulty: 4, // Set the PoW difficulty (e.g., 4 leading zeros)
         };
         // By default, the block after genesis, will contain no transactions
         blockchain.prepare_block_for_mining(vec![]);
@@ -98,7 +98,7 @@ impl Blockchain {
     }
 }
 
-fn create_genesis_block() -> Block {
+pub fn create_genesis_block() -> Block {
     Block {
         index: 0,                                               // First block has index 0
         timestamp: 0,         // Placeholder for the timestamp (e.g., Unix epoch time 0)
