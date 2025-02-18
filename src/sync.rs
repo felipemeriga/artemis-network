@@ -28,10 +28,20 @@ impl Sync {
         }
     }
 
-    pub async fn sync_with_peers(&mut self, tcp_address: String) {
-        // first 10-second sleep for giving time for finding new peers
-        tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+    pub async fn sync_with_peers(
+        &mut self,
+        tcp_address: String,
+        first_discover_done: Arc<Mutex<bool>>,
+        first_sync_done: Arc<Mutex<bool>>,
+    ) {
         loop {
+            {
+                if !*first_discover_done.lock().await {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                    continue;
+                }
+            }
+
             let peers = { self.peers.lock().await.clone() };
             let mut longest_chain = None;
             let mut max_length = self.blockchain.read().await.get_chain().len();
@@ -83,7 +93,11 @@ impl Sync {
             } else {
                 sync_info!("Local chain is the longest.");
             }
-
+            {
+                if !*first_sync_done.lock().await {
+                    *first_sync_done.lock().await = true;
+                }
+            }
             // Sleep for some time before the next sync
             tokio::time::sleep(tokio::time::Duration::from_secs(120)).await;
         }

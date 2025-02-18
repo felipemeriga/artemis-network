@@ -2,7 +2,7 @@ use crate::block::Block;
 use crate::blockchain::Blockchain;
 use crate::broadcaster::Broadcaster;
 use crate::discover::Peer;
-use crate::handler::{create_wallet, get_transaction_by_hash, health_check, sign_and_submit_transaction, sign_transaction, submit_transaction};
+use crate::handler::{create_wallet, get_transaction_by_hash, get_transactions_by_wallet, health_check, sign_and_submit_transaction, sign_transaction, submit_transaction};
 use crate::pool::TransactionPool;
 use crate::transaction::Transaction;
 use crate::{server_error, server_info, server_warn};
@@ -64,6 +64,7 @@ impl ServerHandler {
                 .service(sign_and_submit_transaction)
                 .service(sign_transaction)
                 .service(get_transaction_by_hash)
+                .service(get_transactions_by_wallet)
         })
         .bind(http_addr)?
         .run()

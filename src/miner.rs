@@ -41,10 +41,15 @@ impl Miner {
         }
     }
 
-    pub async fn mine(&mut self) {
-        // First 15-seconds sleep, for giving time for collecting first peers and new chain
-        tokio::time::sleep(Duration::from_secs(15)).await;
+    pub async fn mine(&mut self, first_sync_done: Arc<Mutex<bool>>) {
         loop {
+            {
+                if !*first_sync_done.lock().await {
+                    tokio::time::sleep(Duration::from_secs(1)).await;
+                    continue
+                }
+            }
+            
             let data = {
                 self.transaction_pool
                     .lock()

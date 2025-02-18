@@ -1,6 +1,7 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
 use crate::broadcaster::Broadcaster;
+use crate::db::Database;
 use crate::discover::Discover;
 use crate::miner::Miner;
 use crate::pool::TransactionPool;
@@ -10,7 +11,6 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::{mpsc::channel, Mutex, RwLock};
 use uuid::Uuid;
-use crate::db::Database;
 
 pub struct Node {
     pub blockchain: Arc<RwLock<Blockchain>>,
@@ -55,7 +55,7 @@ impl Node {
             server_broadcaster,
             server_tx_pool,
             peers.clone(),
-            database.clone()
+            database.clone(),
         ));
 
         // TCP Server will be used for p2p communication between nodes
@@ -66,6 +66,13 @@ impl Node {
         // Spawn a client task for syncing
         let blockchain = self.blockchain.clone();
         let sync_tx = tx.clone();
+
+        // These will be responsible for controlling whether to start a new task
+        // When a node has been started, we need to make sure it was capable to find peers,
+        // and that he could get the latest state of the Blockchain, only after that we can start
+        // mining
+        let first_discover_done = Arc::new(Mutex::new(false));
+        let first_sync_done = Arc::new(Mutex::new(false));
 
         let mut sync = Sync::new(blockchain, peers.clone(), sync_tx);
 
@@ -87,16 +94,14 @@ impl Node {
         if !bootstrap_address.is_empty() {
             let peers = peers.clone();
             discover = Some(Discover::new(peers));
+        } else {
+            {
+                *first_discover_done.lock().await = true;
+            }
         }
 
         // Run everything concurrently
         let _ = tokio::join!(
-            async {
-                if let Some(mut dsc) = discover {
-                    dsc.find_peers(miner_id, tcp_address.clone(), bootstrap_address)
-                        .await;
-                }
-            },
             async {
                 tcp_server
                     .start_tcp_server(tcp_address.clone())
@@ -107,10 +112,26 @@ impl Node {
                 http_server.start_http_server(http_address).await.unwrap();
             },
             async {
-                sync.sync_with_peers(tcp_address.clone()).await;
+                if let Some(mut dsc) = discover {
+                    dsc.find_peers(
+                        miner_id,
+                        tcp_address.clone(),
+                        bootstrap_address,
+                        first_discover_done.clone(),
+                    )
+                    .await;
+                }
             },
             async {
-                miner.mine().await;
+                sync.sync_with_peers(
+                    tcp_address.clone(),
+                    first_discover_done.clone(),
+                    first_sync_done.clone(),
+                )
+                .await;
+            },
+            async {
+                miner.mine(first_sync_done.clone()).await;
             }
         );
     }

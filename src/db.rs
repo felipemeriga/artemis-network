@@ -1,6 +1,7 @@
 use crate::error::DatabaseError;
 use crate::transaction::Transaction;
 use sled::Db;
+// use crate::block::Block;
 
 pub struct Database {
     pub db: Db,
@@ -82,4 +83,47 @@ impl Database {
             None => Ok(vec![]),
         }
     }
+
+    // pub fn store_block(&self, block: &Block) -> Result<(), DatabaseError> {
+    //     let key = format!("block:{}", block.hash);
+    //     let value = serde_json::to_vec(block).unwrap();
+    //     self.db.insert(key, value)?;
+    //     Ok(())
+    // }
+    // 
+    // pub fn get_block(&self, block_hash: &str) -> Option<Block> {
+    //     let key = format!("block:{}", block_hash);
+    //     if let Ok(Some(value)) = self.db.get(key) {
+    //         let block: Block = serde_json::from_slice(&value).unwrap();
+    //         return Some(block);
+    //     }
+    //     None
+    // }
+    // 
+    // pub fn get_all_blocks(&self) -> Vec<Block> {
+    //     let mut blocks = Vec::new();
+    //     for item in self.db.scan_prefix("block:") {
+    //         if let Ok((_, value)) = item {
+    //             let block: Block = serde_json::from_slice(&value).unwrap();
+    //             blocks.push(block);
+    //         }
+    //     }
+    //     blocks
+    // }
+    // 
+    // // Store a list of blocks with all their internal transactions
+    // pub fn store_blocks_and_transactions(&self, blocks: Vec<Block>) -> Result<(), DatabaseError> {
+    //     // Loop through each block
+    //     for block in blocks {
+    //         // Store the block itself
+    //         self.store_block(&block)?;
+    // 
+    //         // Store all transactions in the block
+    //         for tx in &block.transactions {
+    //             let tx_hash = tx.hash();
+    //             self.store_transaction(tx, &tx_hash)?; // Store each transaction and its hash
+    //         }
+    //     }
+    //     Ok(())
+    // }
 }
