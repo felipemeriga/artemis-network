@@ -29,6 +29,16 @@ impl Node {
         peers_set.insert(config.tcp_address.clone());
         let peers = Arc::new(Mutex::new(peers_set));
         let database = Arc::new(Mutex::new(Database::new(config.node_id.clone())));
+        {
+            if database
+                .lock()
+                .await
+                .store_block(&blockchain.read().await.get_last_block().clone())
+                .is_err()
+            {
+                panic!("Error storing genesis block");
+            }
+        }
 
         let (block_tx, block_rx) = channel::<Option<Block>>(20);
 

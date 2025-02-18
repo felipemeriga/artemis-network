@@ -10,11 +10,16 @@ pub struct Blockchain {
 
 impl Blockchain {
     pub fn new() -> Self {
-        let genesis_block = Block::new(0, 0, vec![], "0".to_string());
-        Blockchain {
+        let genesis_block = create_genesis_block();
+        // let genesis_block = Block::new(0, 0, vec![], "0".to_string());
+        let blockchain = Blockchain {
             chain: vec![genesis_block],
             difficulty: 5, // Set the PoW difficulty (e.g., 4 leading zeros)
-        }
+        };
+        // By default, the block after genesis, will contain no transactions
+        blockchain.prepare_block_for_mining(vec![]);
+
+        blockchain
     }
 
     pub fn is_valid_chain(chain: &[Block]) -> bool {
@@ -90,5 +95,16 @@ impl Blockchain {
 
     pub fn get_chain(&self) -> Vec<Block> {
         self.chain.clone()
+    }
+}
+
+fn create_genesis_block() -> Block {
+    Block {
+        index: 0,                                               // First block has index 0
+        timestamp: 0,         // Placeholder for the timestamp (e.g., Unix epoch time 0)
+        transactions: vec![], // No transactions in the genesis block
+        previous_hash: String::from("0"), // Special value to denote no parent block
+        hash: String::from("00000000000000000000000000000000"), // Predefined hash for genesis
+        nonce: 0,             // PoW value starts at 0
     }
 }
