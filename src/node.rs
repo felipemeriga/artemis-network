@@ -68,7 +68,7 @@ impl Node {
         let first_discover_done = Arc::new(Mutex::new(false));
         let first_sync_done = Arc::new(Mutex::new(false));
 
-        let mut sync = Sync::new(blockchain, peers.clone(), sync_tx);
+        let mut sync = Sync::new(blockchain, peers.clone(), sync_tx, database.clone());
 
         let blockchain = self.blockchain.clone();
         let miner_broadcaster = broadcaster.clone();

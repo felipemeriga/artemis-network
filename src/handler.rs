@@ -185,3 +185,12 @@ pub async fn get_block_by_hash(
         None => HttpResponse::NotFound().body("The block was not found"),
     }
 }
+
+#[get("/blocks")]
+pub async fn get_all_blocks(handler: web::Data<Arc<ServerHandler>>) -> impl Responder {
+    let server_handler = handler.into_inner();
+
+    let result = server_handler.database.lock().await.get_all_blocks();
+
+    HttpResponse::Ok().json(result)
+}

@@ -108,30 +108,34 @@ impl Database {
         None
     }
 
-    // pub fn get_all_blocks(&self) -> Vec<Block> {
-    //     let mut blocks = Vec::new();
-    //     for item in self.db.scan_prefix("block:") {
-    //         if let Ok((_, value)) = item {
-    //             let block: Block = serde_json::from_slice(&value).unwrap();
-    //             blocks.push(block);
-    //         }
-    //     }
-    //     blocks
-    // }
-    //
-    // // Store a list of blocks with all their internal transactions
-    // pub fn store_blocks_and_transactions(&self, blocks: Vec<Block>) -> Result<(), DatabaseError> {
-    //     // Loop through each block
-    //     for block in blocks {
-    //         // Store the block itself
-    //         self.store_block(&block)?;
-    //
-    //         // Store all transactions in the block
-    //         for tx in &block.transactions {
-    //             let tx_hash = tx.hash();
-    //             self.store_transaction(tx, &tx_hash)?; // Store each transaction and its hash
-    //         }
-    //     }
-    //     Ok(())
-    // }
+    pub fn get_all_blocks(&self) -> Vec<Block> {
+        let mut blocks: Vec<_> = self
+            .db
+            .scan_prefix("block:")
+            .filter_map(|item| {
+                item.ok()
+                    .and_then(|(_, value)| serde_json::from_slice::<Block>(&value).ok())
+            })
+            .collect();
+
+        // Sort by the block index field (assuming u64 or similar for sorting purposes)
+        blocks.sort_by(|a, b| a.index.cmp(&b.index));
+        blocks
+    }
+
+    // Store a list of blocks with all their internal transactions
+    pub fn store_blocks_and_transactions(&self, blocks: Vec<Block>) -> Result<(), DatabaseError> {
+        // Loop through each block
+        for block in blocks {
+            // Store the block itself
+            self.store_block(&block)?;
+
+            // Store all transactions in the block
+            for tx in &block.transactions {
+                let tx_hash = tx.hash();
+                self.store_transaction(tx, &tx_hash)?; // Store each transaction and its hash
+            }
+        }
+        Ok(())
+    }
 }
