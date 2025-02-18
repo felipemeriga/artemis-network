@@ -68,11 +68,8 @@ These components run concurrently, safely sharing references to the transaction 
 
 ## Upcoming Features
 
-- Apply linting to the existing codebase.
 - Implement dynamic peer discovery using mDNS (instead of manual command-line configurations).
-- Integrate RocksDB for efficient transaction and block storage.
 - Strengthen validation rules to prevent double-spending.
-- Implement configuration management via a config file.
 - Develop a CLI tool for wallet creation and transaction signing.
 - Improve consensus handling to manage forks efficiently.
 - **Blockchain Explorer**: Build a web-based interface to visualize blockchain data.
@@ -83,11 +80,23 @@ These components run concurrently, safely sharing references to the transaction 
 
 ## Command-Line Arguments
 
-The following arguments can be used to configure node behavior:
+In order to run a node, you need to provide the following arguments:
 
-- `tcp-bind` → The hostname and port for the TCP server (e.g., `127.0.0.1:5000`).
-- `rpc-bind` → The hostname and port for the HTTP server (e.g., `127.0.0.1:8080`).
-- `peers` → A comma-separated list of peer nodes (e.g., `127.0.0.1:8333,192.168.1.1:8333`).
+- `config` → The path to the config file, containing the node basic config.
+
+---
+
+## Config file
+
+The config file is responsible for setting the node configuration, it needs to be a yaml file, containing the
+following fields:
+
+- `tcpAddress`: The hostname and port for the TCP server (e.g., `127.0.0.1:5000`).
+- `httpAddress`: The hostname and port for the HTTP server (e.g., `127.0.0.1:8080`).
+- `bootstrapAddress`: The hostname and the port of the bootstrap node(genesis node), for initiating a common node.
+It's optional, if you want to start a full-node, you don't need to provide this value, if you want to start a common node,
+that needs to sync with peers the latest chain state, you need to provide it.
+- `nodeId`: A unique ID for your node.
 
 ---
 
@@ -96,5 +105,5 @@ The following arguments can be used to configure node behavior:
 To run Artemis-network locally, use the following command:
 
 ```shell
-cargo run --color=always --package artemis-network --features qa --bin artemis-network -- --tcp-bind=127.0.0.1:5000 --rpc-bind=127.0.0.1:8080 --peers=127.0.0.1:5001
+cargo run --color=always --package artemis-network --features dev --bin artemis-network -- --config=./config/config-1.yaml
 ```
