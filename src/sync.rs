@@ -81,6 +81,11 @@ impl Sync {
                             }
                         }
                     }
+                } else {
+                    {
+                        // In the case the node can't connect to that peer, it will remove from the list
+                        self.peers.lock().await.remove(&peer_address);
+                    }
                 }
             }
 

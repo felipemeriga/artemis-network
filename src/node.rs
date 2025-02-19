@@ -92,17 +92,22 @@ impl Node {
             true,
             1,
         );
-
-        let mut discover = None;
-
         if config.bootstrap_address.is_some() {
-            let peers = peers.clone();
-            discover = Some(Discover::new(peers));
-        } else {
             {
-                *first_discover_done.lock().await = true;
+                peers
+                    .lock()
+                    .await
+                    .insert(config.bootstrap_address.clone().unwrap());
             }
         }
+        let peers = peers.clone();
+        let mut discover = Discover::new(peers);
+
+        // else {
+        //     {
+        //         *first_discover_done.lock().await = true;
+        //     }
+        // }
 
         // Run everything concurrently
         let _ = tokio::join!(
@@ -119,15 +124,13 @@ impl Node {
                     .unwrap();
             },
             async {
-                if let Some(mut dsc) = discover {
-                    dsc.find_peers(
+                discover
+                    .find_peers(
                         config.node_id.clone(),
                         config.tcp_address.clone(),
-                        config.bootstrap_address.unwrap(),
                         first_discover_done.clone(),
                     )
                     .await;
-                }
             },
             async {
                 sync.sync_with_peers(

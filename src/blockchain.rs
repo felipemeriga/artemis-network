@@ -14,7 +14,7 @@ impl Blockchain {
         // let genesis_block = Block::new(0, 0, vec![], "0".to_string());
         let blockchain = Blockchain {
             chain: vec![genesis_block],
-            difficulty: 4, // Set the PoW difficulty (e.g., 4 leading zeros)
+            difficulty: 5, // Set the PoW difficulty (e.g., 4 leading zeros)
         };
         // By default, the block after genesis, will contain no transactions
         blockchain.prepare_block_for_mining(vec![]);

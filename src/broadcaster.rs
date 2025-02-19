@@ -35,6 +35,11 @@ impl Broadcaster {
                 if let Err(e) = stream.write_all(serialized_request.as_bytes()).await {
                     broadcaster_error!("Failed to send block to {}: {}", peer_address, e);
                 }
+            } else {
+                {
+                    // In the case the node can't connect to that peer, it will remove from the list
+                    self.peers.lock().await.remove(&peer_address);
+                }
             }
         }
     }
@@ -55,6 +60,11 @@ impl Broadcaster {
                 let serialized_request = serde_json::to_string(&request).unwrap();
                 if let Err(e) = stream.write_all(serialized_request.as_bytes()).await {
                     broadcaster_error!("Failed to send transaction to {}: {}", peer_address, e);
+                }
+            } else {
+                {
+                    // In the case the node can't connect to that peer, it will remove from the list
+                    self.peers.lock().await.remove(&peer_address);
                 }
             }
         }

@@ -26,53 +26,69 @@ impl Discover {
         &mut self,
         node_id: String,
         tcp_address: String,
-        boostrap_address: String,
         first_discover_done: Arc<Mutex<bool>>,
     ) {
         loop {
-            discover_info!("Looking for peers on bootstrap node");
-            if let Ok(mut stream) = TcpStream::connect(&boostrap_address).await {
-                let this_peer = Peer {
-                    id: node_id.clone(),
-                    address: tcp_address.clone(),
-                };
+            discover_info!("Looking for discovering new peers");
+            let peers = { self.peers.lock().await.clone() };
 
-                // Send request to register itself in the bootstrap node
-                let request = Request {
-                    command: "register".to_string(),
-                    data: serde_json::to_string(&this_peer).unwrap(),
-                };
-
-                let marshalled_request = serde_json::to_string(&request).unwrap();
-
-                // TODO - Add fatal error for connecting to invalid bootstrap node
-                if stream
-                    .write_all(marshalled_request.as_bytes())
-                    .await
-                    .is_err()
-                {
+            let mut receive_one_response = false;
+            for peer_address in peers {
+                if peer_address == tcp_address {
                     continue;
                 }
+                if let Ok(mut stream) = TcpStream::connect(&peer_address).await {
+                    let this_peer = Peer {
+                        id: node_id.clone(),
+                        address: tcp_address.clone(),
+                    };
 
-                let mut buffer = [0; 1024];
-                if let Ok(n) = stream.read(&mut buffer).await {
-                    let data = String::from_utf8_lossy(&buffer[..n]);
-                    if let Ok(remote_peers) = serde_json::from_str::<HashSet<String>>(&data) {
-                        for address in remote_peers {
-                            if address != tcp_address {
-                                {
-                                    let mut peers = self.peers.lock().await;
-                                    if !peers.contains(&address.clone()) {
-                                        discover_info!(
-                                            "New peer discovered on address: {}",
-                                            address
-                                        );
-                                        peers.insert(address);
+                    // Send request to register itself in the bootstrap node
+                    let request = Request {
+                        command: "register".to_string(),
+                        data: serde_json::to_string(&this_peer).unwrap(),
+                    };
+
+                    let marshalled_request = serde_json::to_string(&request).unwrap();
+
+                    // TODO - Add fatal error for connecting to invalid bootstrap node
+                    if stream
+                        .write_all(marshalled_request.as_bytes())
+                        .await
+                        .is_err()
+                    {
+                        continue;
+                    }
+
+                    let mut buffer = [0; 1024];
+                    if let Ok(n) = stream.read(&mut buffer).await {
+                        let data = String::from_utf8_lossy(&buffer[..n]);
+                        if let Ok(remote_peers) = serde_json::from_str::<HashSet<String>>(&data) {
+                            receive_one_response = true;
+                            for address in remote_peers {
+                                if address != tcp_address {
+                                    {
+                                        let mut peers = self.peers.lock().await;
+                                        if !peers.contains(&address.clone()) {
+                                            discover_info!(
+                                                "New peer discovered on address: {}",
+                                                address
+                                            );
+                                            peers.insert(address);
+                                        }
                                     }
                                 }
                             }
                         }
                     }
+                } else {
+                    {
+                        // In the case the node can't connect to that peer, it will remove from the list
+                        self.peers.lock().await.remove(&peer_address);
+                    }
+                }
+                if receive_one_response {
+                    break;
                 }
             }
 
@@ -83,7 +99,7 @@ impl Discover {
                     *first_discover_done.lock().await = true;
                 }
             }
-            tokio::time::sleep(tokio::time::Duration::from_secs(120)).await;
+            tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
         }
     }
 }
