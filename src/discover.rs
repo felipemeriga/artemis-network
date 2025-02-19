@@ -27,6 +27,7 @@ impl Discover {
         node_id: String,
         tcp_address: String,
         boostrap_address: String,
+        first_discover_done: Arc<Mutex<bool>>,
     ) {
         loop {
             discover_info!("Looking for peers on bootstrap node");
@@ -75,6 +76,13 @@ impl Discover {
                 }
             }
 
+            // Using a mutex for letting other tasks aware that this process
+            // executed at least once
+            {
+                if !*first_discover_done.lock().await {
+                    *first_discover_done.lock().await = true;
+                }
+            }
             tokio::time::sleep(tokio::time::Duration::from_secs(120)).await;
         }
     }

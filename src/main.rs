@@ -4,6 +4,8 @@ extern crate log;
 mod block;
 mod blockchain;
 mod broadcaster;
+mod config;
+mod db;
 mod discover;
 mod error;
 mod handler;
@@ -17,6 +19,7 @@ mod tests;
 mod transaction;
 mod wallet;
 
+use crate::config::load_config;
 use crate::logger::init_logger;
 use crate::node::Node;
 use clap::Parser;
@@ -27,15 +30,7 @@ use clap::Parser;
 struct Args {
     /// The hostname and port to run the application (e.g., 127.0.0.1:8080)
     #[arg(short, long)]
-    tcp_bind: String,
-
-    /// The hostname and port to run the application (e.g., 127.0.0.1:8080)
-    #[arg(short, long)]
-    rpc_bind: String,
-
-    /// Address of the bootstrap node for registering as a new peer (full-nodes will leave this empty)
-    #[arg(short, long, default_value = "")]
-    bootstrap_address: String,
+    config: String,
 }
 
 #[tokio::main]
@@ -45,16 +40,11 @@ async fn main() {
     // Parse command-line arguments
     let args = Args::parse();
 
-    // Extract the bind address for tcp server (peer-to-peer communication) (host and port)
-    let tcp_bind_addr = args.tcp_bind;
+    // Extract the config path from cli arguments
+    let config_path = args.config;
 
-    // Extract the bind address for HTTP server (RPC client calls)
-    let http_bind_addr = args.rpc_bind;
-
-    // Extract peers
-    let bootstrap_address = args.bootstrap_address;
+    let config = load_config(config_path.as_str()).expect("Failed to load config file.");
 
     let node = Node::new();
-    node.start(tcp_bind_addr, http_bind_addr, bootstrap_address)
-        .await;
+    node.start(config).await;
 }

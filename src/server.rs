@@ -1,9 +1,12 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
 use crate::broadcaster::Broadcaster;
+use crate::db::Database;
 use crate::discover::Peer;
 use crate::handler::{
-    create_wallet, health_check, sign_and_submit_transaction, sign_transaction, submit_transaction,
+    create_wallet, get_all_blocks, get_block_by_hash, get_transaction_by_hash,
+    get_transactions_by_wallet, health_check, sign_and_submit_transaction, sign_transaction,
+    submit_transaction,
 };
 use crate::pool::TransactionPool;
 use crate::transaction::Transaction;
@@ -30,6 +33,7 @@ pub struct ServerHandler {
     pub broadcaster: Arc<Mutex<Broadcaster>>,
     pub transaction_pool: Arc<Mutex<TransactionPool>>,
     pub peers: Arc<Mutex<HashSet<String>>>,
+    pub database: Arc<Mutex<Database>>,
 }
 
 impl ServerHandler {
@@ -39,6 +43,7 @@ impl ServerHandler {
         broadcaster: Arc<Mutex<Broadcaster>>,
         transaction_pool: Arc<Mutex<TransactionPool>>,
         peers: Arc<Mutex<HashSet<String>>>,
+        database: Arc<Mutex<Database>>,
     ) -> Self {
         Self {
             blockchain,
@@ -46,6 +51,7 @@ impl ServerHandler {
             broadcaster,
             transaction_pool,
             peers,
+            database,
         }
     }
 
@@ -61,6 +67,10 @@ impl ServerHandler {
                 .service(create_wallet)
                 .service(sign_and_submit_transaction)
                 .service(sign_transaction)
+                .service(get_transaction_by_hash)
+                .service(get_transactions_by_wallet)
+                .service(get_block_by_hash)
+                .service(get_all_blocks)
         })
         .bind(http_addr)?
         .run()

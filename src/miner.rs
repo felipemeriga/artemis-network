@@ -1,6 +1,7 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
 use crate::broadcaster::Broadcaster;
+use crate::db::Database;
 use crate::miner_info;
 use crate::pool::TransactionPool;
 use std::sync::Arc;
@@ -14,6 +15,7 @@ pub struct Miner {
     broadcaster: Arc<Mutex<Broadcaster>>,
     block_rx: Receiver<Option<Block>>,
     transaction_pool: Arc<Mutex<TransactionPool>>,
+    database: Arc<Mutex<Database>>,
     mine_without_transactions: bool,
     transactions_per_block: i32,
 }
@@ -24,6 +26,7 @@ impl Miner {
         broadcaster: Arc<Mutex<Broadcaster>>,
         block_rx: Receiver<Option<Block>>,
         transaction_pool: Arc<Mutex<TransactionPool>>,
+        database: Arc<Mutex<Database>>,
         mine_without_transactions: bool,
         transactions_per_block: i32,
     ) -> Self {
@@ -32,15 +35,21 @@ impl Miner {
             broadcaster,
             block_rx,
             transaction_pool,
+            database,
             mine_without_transactions,
             transactions_per_block,
         }
     }
 
-    pub async fn mine(&mut self) {
-        // First 15-seconds sleep, for giving time for collecting first peers and new chain
-        tokio::time::sleep(Duration::from_secs(15)).await;
+    pub async fn mine(&mut self, first_sync_done: Arc<Mutex<bool>>) {
         loop {
+            {
+                if !*first_sync_done.lock().await {
+                    tokio::time::sleep(Duration::from_secs(1)).await;
+                    continue;
+                }
+            }
+
             let data = {
                 self.transaction_pool
                     .lock()
@@ -87,10 +96,16 @@ impl Miner {
                             // check if the new incoming block,
                             // contains transactions that are present in this transaction pool
                             {
-                             self.transaction_pool.lock().await.process_mined_transactions(false, &new_block.unwrap().transactions);
+                             self.transaction_pool.lock().await.process_mined_transactions(false, &new_block.clone().unwrap().transactions);
                             }
-
                         }
+
+                        // Executing the database persistence concurrently
+                        let persist_block = new_block.clone().unwrap();
+                        let database = self.database.clone();
+                        tokio::spawn(async move {
+                            Self::save_mine_result(database, persist_block).await;
+                        });
                         break; // Exit the mining loop and restart
                     }
 
@@ -124,6 +139,14 @@ impl Miner {
                             .broadcast_new_block(&new_block)
                             .await;
                     }
+
+                    // Executing the database persistence concurrently
+                    let persist_block = new_block.clone();
+                    let database = self.database.clone();
+                    tokio::spawn(async move {
+                        Self::save_mine_result(database, persist_block).await;
+                    });
+
                     // Adding a 2-second delay on the miner that wins to make the process fair
                     // In production blockchains,
                     // like bitcoin's, there are a lot of built-in redundancy
@@ -138,6 +161,37 @@ impl Miner {
             // Reset and restart on interruption or completion
             // tokio::time::sleep(Duration::from_secs(1)).await;
             miner_info!("Restarting mining...");
+        }
+    }
+
+    pub async fn save_mine_result(database: Arc<Mutex<Database>>, new_block: Block) {
+        {
+            let block_hash = new_block.hash.clone();
+            match database.lock().await.store_block(&new_block) {
+                Ok(_) => {
+                    miner_info!("block with hash {} saved to database", block_hash);
+                }
+                Err(err) => {
+                    miner_info!("Error saving block to database: {}", err);
+                }
+            };
+        }
+
+        let transactions_to_save = new_block.transactions.clone();
+        if !transactions_to_save.is_empty() {
+            for tx in transactions_to_save {
+                let tx_hash = tx.hash();
+                {
+                    match database.lock().await.store_transaction(&tx, &tx_hash) {
+                        Ok(_) => {
+                            miner_info!("Transaction with hash {} saved to database", tx_hash);
+                        }
+                        Err(e) => {
+                            miner_info!("Error saving transaction to database: {}", e);
+                        }
+                    };
+                }
+            }
         }
     }
 }
