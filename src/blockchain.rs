@@ -11,15 +11,10 @@ pub struct Blockchain {
 impl Blockchain {
     pub fn new() -> Self {
         let genesis_block = create_genesis_block();
-        // let genesis_block = Block::new(0, 0, vec![], "0".to_string());
-        let blockchain = Blockchain {
+        Blockchain {
             chain: vec![genesis_block],
             difficulty: 5, // Set the PoW difficulty (e.g., 4 leading zeros)
-        };
-        // By default, the block after genesis, will contain no transactions
-        blockchain.prepare_block_for_mining(vec![]);
-
-        blockchain
+        }
     }
 
     pub fn is_valid_chain(chain: &[Block]) -> bool {

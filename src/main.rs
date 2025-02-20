@@ -17,6 +17,7 @@ mod server;
 mod sync;
 mod tests;
 mod transaction;
+mod utils;
 mod wallet;
 
 use crate::config::load_config;
