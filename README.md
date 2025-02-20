@@ -34,13 +34,14 @@ We are actively developing this project and have structured the blockchain’s i
 
 - **Server**:
   - Manages TCP and HTTP connections.
-  - Handles peer discovery.
 - **Sync**:
   - Keeps the blockchain state synchronized across nodes.
 - **Miner**:
   - Executes the mining process.
 - **Broadcaster**:
   - Broadcasts transactions, blocks, and the blockchain itself to peers.
+- **Discover**:
+  - Responsible for discovering another peers
 
 These components run concurrently, safely sharing references to the transaction pool, blockchain, and peer data.
 
@@ -93,9 +94,9 @@ following fields:
 
 - `tcpAddress`: The hostname and port for the TCP server (e.g., `127.0.0.1:5000`).
 - `httpAddress`: The hostname and port for the HTTP server (e.g., `127.0.0.1:8080`).
-- `bootstrapAddress`: The hostname and the port of the bootstrap node(genesis node), for initiating a common node.
-It's optional, if you want to start a full-node, you don't need to provide this value, if you want to start a common node,
-that needs to sync with peers the latest chain state, you need to provide it.
+- `bootstrapAddress`: The hostname and the port of the bootstrap node, which represents another node that already exists 
+in the network, which will be the first point of contact of this current node, for discovering another nodes. If launching 
+genesis node, you don't need to provide this attribute.
 - `nodeId`: A unique ID for your node.
 
 ---
