@@ -1,0 +1,4 @@
+tcpAddress: "127.0.0.1:5002"
+httpAddress: "127.0.0.1:7070"
+bootstrapAddress: "127.0.0.1:5000"
+nodeId: "slave-2"

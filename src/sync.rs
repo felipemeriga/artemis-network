@@ -3,6 +3,7 @@ use crate::blockchain::Blockchain;
 use crate::db::Database;
 use crate::server::Request;
 use crate::sync_info;
+use serde_json::from_str;
 use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -69,17 +70,15 @@ impl Sync {
                         continue;
                     }
 
-                    let mut buffer = [0; 8184];
-                    if let Ok(n) = stream.read(&mut buffer).await {
-                        let data = String::from_utf8_lossy(&buffer[..n]);
-                        if let Ok(peer_chain) = serde_json::from_str::<Vec<Block>>(&data) {
-                            if peer_chain.len() > max_length
-                                && Blockchain::is_valid_chain(&peer_chain)
-                            {
-                                max_length = peer_chain.len();
-                                longest_chain = Some(peer_chain);
-                            }
-                        }
+                    let peer_chain = Self::receive_blockchain(stream).await;
+                    if peer_chain.len() > max_length && Blockchain::is_valid_chain(&peer_chain) {
+                        max_length = peer_chain.len();
+                        longest_chain = Some(peer_chain);
+                    }
+                } else {
+                    {
+                        // In the case the node can't connect to that peer, it will remove from the list
+                        self.peers.lock().await.remove(&peer_address);
                     }
                 }
             }
@@ -120,5 +119,40 @@ impl Sync {
             // Sleep for some time before the next sync
             tokio::time::sleep(tokio::time::Duration::from_secs(120)).await;
         }
+    }
+
+    pub async fn receive_blockchain(mut stream: TcpStream) -> Vec<Block> {
+        let mut blocks = Vec::new();
+        let mut buffer = String::new();
+        let mut temp = [0u8; 1024]; // Read in chunks
+
+        while let Ok(n) = stream.read(&mut temp).await {
+            if n == 0 {
+                break; // Connection closed
+            }
+
+            // Append received data to the buffer
+            buffer.push_str(&String::from_utf8_lossy(&temp[..n]));
+
+            // Process complete blocks
+            while let Some(pos) = buffer.find("<END_BLOCK>\n") {
+                let extracted_block = buffer[..pos].trim().to_string(); // Extract the JSON part
+                                                                        // Using buffer drain, to change the same string, instead of allocating a new one
+                                                                        // which may impact in performance
+                buffer.drain(..pos + "<END_BLOCK>\n".len());
+
+                if extracted_block == "<END_CHAIN>" {
+                    return blocks; // Stop when the end marker is received
+                }
+
+                // Attempt deserialization
+                match from_str::<Block>(&extracted_block) {
+                    Ok(block) => blocks.push(block),
+                    Err(e) => eprintln!("Failed to deserialize block: {}", e),
+                }
+            }
+        }
+
+        blocks
     }
 }

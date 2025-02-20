@@ -13,6 +13,7 @@ use crate::transaction::Transaction;
 use crate::{server_error, server_info, server_warn};
 use actix_web::{web, App, HttpServer};
 use serde::{Deserialize, Serialize};
+use serde_json::to_string;
 use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -135,9 +136,25 @@ impl ServerHandler {
                         }
                     }
                     "get_blockchain" => {
-                        let chain = self.blockchain.read().await.get_chain();
-                        let response = serde_json::to_string(&chain).unwrap();
-                        let _ = stream.write_all(response.as_bytes()).await;
+                        let chain = { self.blockchain.read().await.get_chain() };
+
+                        for block in chain {
+                            let block_json = to_string(&block).unwrap(); // Serialize block
+                            let block_chunk = format!("{}{}\n", block_json, "<END_BLOCK>"); // Append delimiter
+
+                            if let Err(e) = stream.write_all(block_chunk.as_bytes()).await {
+                                server_error!("Failed to send block: {}", e);
+                                break;
+                            }
+
+                            if let Err(e) = stream.flush().await {
+                                server_error!("Failed to flush stream: {}", e);
+                                break;
+                            }
+                        }
+                        // Send a final message indicating completion
+                        let _ = stream.write_all(b"<END_CHAIN>\n").await;
+                        let _ = stream.flush().await;
                     }
                     "register" => {
                         if let Ok(peer) = serde_json::from_str::<Peer>(&req.data) {
