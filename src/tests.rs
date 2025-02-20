@@ -68,7 +68,7 @@ mod tests {
             chrono::Utc::now().timestamp(),
         );
         transaction.sign(&sender_wallet);
-        assert_eq!(transaction.verify(&sender_wallet.public_key), true);
+        assert_eq!(transaction.verify(), true);
     }
 
     #[test]
@@ -91,7 +91,7 @@ mod tests {
         // since the signing hash, will be different
         transaction.amount = OrderedFloat::from(10.0);
 
-        assert_eq!(transaction.verify(&sender_wallet.public_key), false);
+        assert_eq!(transaction.verify(), false);
     }
 
     #[test]

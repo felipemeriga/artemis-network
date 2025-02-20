@@ -1,6 +1,6 @@
 use crate::server::ServerHandler;
 use crate::server_info;
-use crate::transaction::{SignTransactionRequest, SubmitTransactionRequest};
+use crate::transaction::{SignTransactionRequest, Transaction};
 use crate::wallet::Wallet;
 use actix_web::{get, post, web, HttpResponse, Responder};
 use std::sync::Arc;
@@ -9,18 +9,11 @@ use std::sync::Arc;
 #[post("/transaction/submit")]
 pub async fn submit_transaction(
     handler: web::Data<Arc<ServerHandler>>,
-    transaction_request: web::Json<SubmitTransactionRequest>,
+    transaction_request: web::Json<Transaction>,
 ) -> impl Responder {
-    let tx_request = transaction_request.into_inner();
-    let tx = tx_request.transaction;
-    let public_key_hex = tx_request.public_key_hex;
+    let tx = transaction_request.into_inner();
 
-    let public_key = match Wallet::public_key_from_hex_string(public_key_hex) {
-        Ok(public_key) => public_key,
-        Err(_) => return HttpResponse::BadRequest().body("Invalid public key"),
-    };
-
-    if tx.verify(&public_key) {
+    if tx.verify() {
         let server_handler = handler.into_inner();
         server_info!("New valid transaction received");
         {

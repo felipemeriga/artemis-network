@@ -1,7 +1,9 @@
 use crate::wallet::Wallet;
 use ordered_float::OrderedFloat;
-use secp256k1::ecdsa::Signature;
+use secp256k1::ecdsa::{RecoverableSignature, RecoveryId};
 use secp256k1::{Message, Secp256k1};
+
+use crate::utils::hash_public_key;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::cmp::Ordering;
@@ -16,13 +18,6 @@ pub struct SignTransactionRequest {
     pub transaction: Transaction,
     pub public_key_hex: String,
     pub private_key_hex: String,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SubmitTransactionRequest {
-    pub transaction: Transaction,
-    pub public_key_hex: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -98,7 +93,7 @@ impl Transaction {
     pub fn sign(&mut self, wallet: &Wallet) {
         let secp = Secp256k1::new();
 
-        // serialize transaction data as bytes (include fee in hash)
+        // Serialize transaction data as bytes (including fee in the hash)
         let message_data = format!(
             "{}:{}:{}:{}:{}",
             self.sender, self.recipient, self.amount, self.fee, self.timestamp
@@ -109,38 +104,71 @@ impl Transaction {
         let message = Message::from_digest(<[u8; 32]>::from(message_hash));
 
         // Sign the message with the sender's private key
-        let sig = secp.sign_ecdsa(&message, &wallet.private_key);
+        let recoverable_sig = secp.sign_ecdsa_recoverable(&message, &wallet.private_key);
+
+        // Serialize the recoverable signature to compact format (including recovery ID)
+        let (recovery_id, sig_bytes) = recoverable_sig.serialize_compact();
+
+        // Convert the recovery ID to an integer (0 or 1)
+        let recovery_id_byte = recovery_id as u8;
+
+        // Append the recovery ID to the signature bytes (64 bytes + 1 byte for recovery ID)
+        let mut sig_with_recovery = sig_bytes.to_vec(); // Copy the signature bytes
+        sig_with_recovery.push(recovery_id_byte); // Append recovery ID as a byte
 
         // Store the signature as a hex string
-        self.signature = Some(hex::encode(sig.serialize_compact()));
+        self.signature = Some(hex::encode(sig_with_recovery));
     }
 
     /// Verify the transaction's signature
-    pub fn verify(&self, sender_public_key: &secp256k1::PublicKey) -> bool {
+    pub fn verify(&self) -> bool {
         let secp = Secp256k1::new();
 
-        // Ensure the transaction is signed
         if let Some(signature_hex) = &self.signature {
-            // Deserialize the signature
-            let sig_bytes = hex::decode(signature_hex).expect("Invalid signature hex");
-            let signature = Signature::from_compact(&sig_bytes).expect("Invalid signature format");
+            // Deserialize the signature as bytes
+            let sig_bytes = match hex::decode(signature_hex) {
+                Ok(bytes) => bytes,
+                Err(_) => return false, // Return false if decoding the signature fails
+            };
 
-            // serialize transaction data as bytes (include fee in hash)
+            // The recovery ID is the last byte of the signature bytes
+            let recovery_id_byte = sig_bytes.last().cloned().unwrap_or(0); // Default to 0 if no recovery id
+            let recovery_id = match RecoveryId::try_from(recovery_id_byte as i32) {
+                Ok(id) => id,
+                Err(_) => return false, // Return false if recovery ID is invalid
+            };
+
+            // Create a RecoverableSignature from the signature bytes and recovery ID
+            let recoverable_sig =
+                match RecoverableSignature::from_compact(&sig_bytes[..64], recovery_id) {
+                    Ok(sig) => sig,
+                    Err(_) => return false, // Return false if signature deserialization fails
+                };
+
+            // Serialize transaction data (excluding signature) as bytes
             let message_data = format!(
                 "{}:{}:{}:{}:{}",
                 self.sender, self.recipient, self.amount, self.fee, self.timestamp
             );
             let message_hash = Sha256::digest(message_data.as_bytes());
 
-            // Create a message for verification
+            // Create a message for signature verification
             let message = Message::from_digest(<[u8; 32]>::from(message_hash));
 
-            // Verify the signature
-            secp.verify_ecdsa(&message, &signature, sender_public_key)
-                .is_ok()
-        } else {
-            false // No signature present
+            // Recover the public key using the recoverable signature
+            let recovered_key = match secp.recover_ecdsa(&message, &recoverable_sig) {
+                Ok(key) => key,
+                Err(_) => return false, // Return false if recovery fails
+            };
+
+            // Hash the recovered public key to compare it to the sender's address
+            let recovered_pub_key_hash = hash_public_key(&recovered_key);
+
+            // Verify if the recovered address matches the sender's address
+            return recovered_pub_key_hash == self.sender;
         }
+
+        false // Return false if no signature is present
     }
 
     pub fn hash(&self) -> String {
