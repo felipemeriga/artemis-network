@@ -91,6 +91,7 @@ impl Node {
             database.clone(),
             true,
             1,
+            config.miner_wallet_address.clone(),
         );
         if config.bootstrap_address.is_some() {
             {

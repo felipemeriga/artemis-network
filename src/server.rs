@@ -21,6 +21,11 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc::Sender;
 use tokio::sync::{Mutex, RwLock};
 
+const TRANSACTION: &str = "transaction";
+const NEW_BLOCK: &str = "new_block";
+const GET_BLOCKCHAIN: &str = "get_blockchain";
+const REGISTER: &str = "register";
+
 #[derive(Serialize, Deserialize)]
 pub struct Request {
     pub command: String,
@@ -98,7 +103,7 @@ impl ServerHandler {
             let request: Result<Request, _> = serde_json::from_slice(&buffer[..n]);
             if let Ok(req) = request {
                 match req.command.as_str() {
-                    "transaction" => {
+                    TRANSACTION => {
                         if let Ok(tx) = serde_json::from_str::<Transaction>(&req.data) {
                             // Inside the function,
                             // there is already a validation,
@@ -120,7 +125,7 @@ impl ServerHandler {
                             server_warn!("Invalid transaction received")
                         }
                     }
-                    "new_block" => {
+                    NEW_BLOCK => {
                         if let Ok(block) = serde_json::from_str::<Block>(&req.data) {
                             let latest_block =
                                 { self.blockchain.read().await.get_last_block().clone() };
@@ -135,7 +140,7 @@ impl ServerHandler {
                             server_warn!("Invalid block received")
                         }
                     }
-                    "get_blockchain" => {
+                    GET_BLOCKCHAIN => {
                         let chain = { self.blockchain.read().await.get_chain() };
 
                         for block in chain {
@@ -156,7 +161,7 @@ impl ServerHandler {
                         let _ = stream.write_all(b"<END_CHAIN>\n").await;
                         let _ = stream.flush().await;
                     }
-                    "register" => {
+                    REGISTER => {
                         if let Ok(peer) = serde_json::from_str::<Peer>(&req.data) {
                             let peers = {
                                 let mut peers_lock = self.peers.lock().await;

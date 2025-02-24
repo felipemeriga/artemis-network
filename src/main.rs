@@ -5,6 +5,7 @@ mod block;
 mod blockchain;
 mod broadcaster;
 mod config;
+mod constants;
 mod db;
 mod discover;
 mod error;

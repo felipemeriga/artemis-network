@@ -1,4 +1,5 @@
 use crate::block::Block;
+use crate::constants::{MAX_SUPPLY, REWARD};
 use crate::transaction::Transaction;
 use serde::{Deserialize, Serialize};
 
@@ -6,6 +7,7 @@ use serde::{Deserialize, Serialize};
 pub struct Blockchain {
     pub chain: Vec<Block>,
     pub difficulty: usize,
+    pub total_supply: u64,
 }
 
 impl Blockchain {
@@ -14,6 +16,7 @@ impl Blockchain {
         Blockchain {
             chain: vec![genesis_block],
             difficulty: 5, // Set the PoW difficulty (e.g., 4 leading zeros)
+            total_supply: 0,
         }
     }
 
@@ -28,6 +31,21 @@ impl Blockchain {
         true
     }
 
+    pub fn get_miner_transaction(&self, miner_address: String) -> Option<Transaction> {
+        if self.total_supply <= MAX_SUPPLY {
+            let new_timestamp = chrono::Utc::now().timestamp() as u64;
+            return Some(Transaction::new(
+                "COINBASE".to_string(), // Sender is "COINBASE"
+                miner_address.clone(),  // Miner receives the reward
+                REWARD as f64,          // Reward amount
+                0.0,                    // No fee for coinbase transactions
+                new_timestamp as i64,
+            ));
+        }
+
+        None
+    }
+
     pub fn add_block(&mut self, new_block: Block) -> bool {
         // Ensure the block's previous_hash is valid
         let last_block = self.chain.last().unwrap();
@@ -40,18 +58,26 @@ impl Blockchain {
 
     pub fn is_valid_new_block(&self, block: &Block) -> bool {
         if let Some(last_block) = self.chain.last() {
-            // Validate previous hash
+            // 1. Validate previous hash
             if block.previous_hash != last_block.hash {
                 return false;
             }
 
+            // 2. Validate block hash and PoW
             let calculated_hash = block.calculate_hash();
-            // Validate block's hash and PoW
             if block.hash != calculated_hash
                 || !block.hash.starts_with(&"0".repeat(self.difficulty))
             {
                 return false;
             }
+
+            // 3. Validate all transactions in the block
+            for tx in &block.transactions {
+                if tx.sender != "COINBASE" && !tx.verify() {
+                    return false; // Invalid transaction
+                }
+            }
+
             return true;
         }
         false

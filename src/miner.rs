@@ -18,9 +18,11 @@ pub struct Miner {
     database: Arc<Mutex<Database>>,
     mine_without_transactions: bool,
     transactions_per_block: i32,
+    wallet_address: String,
 }
 
 impl Miner {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         blockchain: Arc<RwLock<Blockchain>>,
         broadcaster: Arc<Mutex<Broadcaster>>,
@@ -29,6 +31,7 @@ impl Miner {
         database: Arc<Mutex<Database>>,
         mine_without_transactions: bool,
         transactions_per_block: i32,
+        wallet_address: String,
     ) -> Self {
         Self {
             blockchain,
@@ -38,6 +41,7 @@ impl Miner {
             database,
             mine_without_transactions,
             transactions_per_block,
+            wallet_address,
         }
     }
 
@@ -70,10 +74,20 @@ impl Miner {
             let mut mined_block: Option<Block> = None;
 
             // Prepare a new block for mining
-            let (mut candidate_block, difficulty) = {
+            let (mut candidate_block, difficulty, miner_reward_tx) = {
                 let blockchain_read = self.blockchain.read().await;
-                blockchain_read.prepare_block_for_mining(data.clone())
+                let (candidate_block, difficulty) =
+                    blockchain_read.prepare_block_for_mining(data.clone());
+                let miner_reward_tx =
+                    blockchain_read.get_miner_transaction(self.wallet_address.clone());
+                (candidate_block, difficulty, miner_reward_tx)
             };
+
+            // Inserting miner reward transaction into the block, since we don't need
+            // it into the transaction pool
+            if let Some(tx) = miner_reward_tx {
+                candidate_block.transactions.push(tx);
+            }
 
             miner_info!("Starting mining with difficulty: {}", difficulty);
             let start_time = Instant::now();
@@ -122,7 +136,7 @@ impl Miner {
 
                 // Ensure the chain hasn't been updated since mining began
                 if blockchain_write.is_valid_new_block(&new_block) {
-                    blockchain_write.chain.push(new_block.clone());
+                    blockchain_write.add_block(new_block.clone());
                     miner_info!(
                         "Mining complete! Block added to blockchain: {:?} (Elapsed: {:?})",
                         new_block,

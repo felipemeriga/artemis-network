@@ -122,6 +122,11 @@ impl Transaction {
 
     /// Verify the transaction's signature
     pub fn verify(&self) -> bool {
+        // TODO - Add this to handlers, to make sure no COINBASE transaction is sent through RPC nodes
+        if self.sender == "COINBASE" {
+            return true; // No signature needed for coinbase
+        }
+
         let secp = Secp256k1::new();
 
         if let Some(signature_hex) = &self.signature {

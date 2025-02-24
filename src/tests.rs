@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use crate::blockchain;
-    use crate::blockchain::create_genesis_block;
+    use crate::blockchain::{create_genesis_block};
     use crate::config::load_config;
     use crate::db::Database;
     use crate::pool::TransactionPool;
@@ -158,6 +158,7 @@ mod tests {
         httpAddress: "127.0.0.1:3000"
         bootstrapAddress: "127.0.0.1:4000"
         nodeId: "node-123"
+        minerWalletAddress: "30114c915aae70a7f5744f6263119c266b9a8dd9cb209385d4759fa76bf0741b"
         "#;
 
         // Write test data to a temporary file

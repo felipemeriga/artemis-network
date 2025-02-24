@@ -10,6 +10,7 @@ pub struct Config {
     pub http_address: String,
     pub bootstrap_address: Option<String>,
     pub node_id: String,
+    pub miner_wallet_address: String,
 }
 
 pub fn load_config(file_path: &str) -> Result<Config, Error> {
