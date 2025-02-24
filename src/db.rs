@@ -100,7 +100,7 @@ impl Database {
     
         let mut balance: f64 = 0.0;
     
-        for tx in transactions {
+        let _ = transactions.iter().for_each(|tx| {
             if tx.recipient == wallet_address {
                 balance += tx.amount.into_inner(); // Add received amount
             }
@@ -108,7 +108,7 @@ impl Database {
                 balance -= tx.amount.into_inner(); // Subtract sent amount
                 balance -= tx.fee.into_inner(); // Subtract sent fee
             }
-        }
+        });
     
         Ok(balance)
     }
