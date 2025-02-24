@@ -76,10 +76,10 @@ impl Miner {
             // Prepare a new block for mining
             let (mut candidate_block, difficulty, miner_reward_tx) = {
                 let blockchain_read = self.blockchain.read().await;
-                let (candidate_block, difficulty) =
+                let (candidate_block, fees, difficulty) =
                     blockchain_read.prepare_block_for_mining(data.clone());
                 let miner_reward_tx =
-                    blockchain_read.get_miner_transaction(self.wallet_address.clone());
+                    blockchain_read.get_miner_transaction(self.wallet_address.clone(), fees);
                 (candidate_block, difficulty, miner_reward_tx)
             };
 

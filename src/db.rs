@@ -95,22 +95,23 @@ impl Database {
         }
     }
 
-    // pub fn get_wallet_balance(&self, wallet_address: &str) -> Result<f64, DatabaseError> {
-    //     let transactions = self.get_transactions_by_wallet(wallet_address)?;
-    //
-    //     let mut balance: f64 = 0.0;
-    //
-    //     for tx in transactions {
-    //         if tx.recipient == wallet_address {
-    //             balance += tx.amount.into_inner(); // Add received amount
-    //         }
-    //         if tx.sender == wallet_address {
-    //             balance -= tx.amount.into_inner(); // Subtract sent amount
-    //         }
-    //     }
-    //
-    //     Ok(balance)
-    // }
+    pub fn get_wallet_balance(&self, wallet_address: &str) -> Result<f64, DatabaseError> {
+        let transactions = self.get_transactions_by_wallet(wallet_address)?;
+    
+        let mut balance: f64 = 0.0;
+    
+        for tx in transactions {
+            if tx.recipient == wallet_address {
+                balance += tx.amount.into_inner(); // Add received amount
+            }
+            if tx.sender == wallet_address {
+                balance -= tx.amount.into_inner(); // Subtract sent amount
+                balance -= tx.fee.into_inner(); // Subtract sent fee
+            }
+        }
+    
+        Ok(balance)
+    }
 
     pub fn store_block(&self, block: &Block) -> Result<(), DatabaseError> {
         let key = format!("block:{}", block.hash);

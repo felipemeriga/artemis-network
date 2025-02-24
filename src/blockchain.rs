@@ -31,13 +31,15 @@ impl Blockchain {
         true
     }
 
-    pub fn get_miner_transaction(&self, miner_address: String) -> Option<Transaction> {
+    // By default, the miners reward would be the coins still available under supply
+    // plus all block's transactions fees
+    pub fn get_miner_transaction(&self, miner_address: String, fees: f64) -> Option<Transaction> {
         if self.total_supply <= MAX_SUPPLY {
             let new_timestamp = chrono::Utc::now().timestamp() as u64;
             return Some(Transaction::new(
                 "COINBASE".to_string(), // Sender is "COINBASE"
                 miner_address.clone(),  // Miner receives the reward
-                REWARD as f64,          // Reward amount
+                REWARD as f64 + fees,          // Reward amount
                 0.0,                    // No fee for coinbase transactions
                 new_timestamp as i64,
             ));
@@ -95,19 +97,24 @@ impl Blockchain {
 
     #[allow(dead_code)]
     pub fn mine_new_block(&self, data: Vec<Transaction>) -> Block {
-        let (mut mined_block, difficult) = self.prepare_block_for_mining(data);
+        let (mut mined_block,_,  difficult) = self.prepare_block_for_mining(data);
         mined_block.mine(difficult);
 
         mined_block
     }
 
-    pub fn prepare_block_for_mining(&self, data: Vec<Transaction>) -> (Block, usize) {
+    pub fn prepare_block_for_mining(&self, data: Vec<Transaction>) -> (Block, f64, usize) {
+        // We need to compute the sum of fees, because it's used as reward for miners
+        let mut fees = 0.0;
+        let _ = &data.iter().for_each(|tx| {fees += tx.fee.into_inner()});
+
+        
         let last_block = self.chain.last().unwrap();
         let new_index = last_block.index + 1;
         let new_timestamp = chrono::Utc::now().timestamp() as u64;
         let new_block = Block::new(new_index, new_timestamp, data, last_block.hash.clone());
         let mined_block = new_block;
-        (mined_block, self.difficulty)
+        (mined_block, fees, self.difficulty)
     }
 
     pub fn get_last_block(&self) -> &Block {
