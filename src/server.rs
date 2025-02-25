@@ -1,9 +1,14 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
-use crate::broadcaster::Broadcaster;
+use crate::broadcaster::{BroadcastItem, Broadcaster};
+use crate::constants::{GET_BLOCKCHAIN, NEW_BLOCK, REGISTER, TRANSACTION};
 use crate::db::Database;
 use crate::discover::Peer;
-use crate::handler::{create_wallet, get_all_blocks, get_block_by_hash, get_transaction_by_hash, get_transactions_by_wallet, get_wallet_balance, health_check, sign_and_submit_transaction, sign_transaction, submit_transaction};
+use crate::handler::{
+    create_wallet, get_all_blocks, get_block_by_hash, get_transaction_by_hash,
+    get_transactions_by_wallet, get_wallet_balance, health_check, sign_and_submit_transaction,
+    sign_transaction, submit_transaction,
+};
 use crate::pool::TransactionPool;
 use crate::transaction::Transaction;
 use crate::{server_error, server_info, server_warn};
@@ -16,11 +21,6 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc::Sender;
 use tokio::sync::{Mutex, RwLock};
-
-const TRANSACTION: &str = "transaction";
-const NEW_BLOCK: &str = "new_block";
-const GET_BLOCKCHAIN: &str = "get_blockchain";
-const REGISTER: &str = "register";
 
 #[derive(Serialize, Deserialize)]
 pub struct Request {
@@ -114,7 +114,7 @@ impl ServerHandler {
                                 self.broadcaster
                                     .lock()
                                     .await
-                                    .broadcast_transaction(tx.clone())
+                                    .broadcast_item(BroadcastItem::Transaction(tx.clone()))
                                     .await;
                             };
                             self.transaction_pool.lock().await.add_transaction(tx);
@@ -141,8 +141,14 @@ impl ServerHandler {
                         let chain = { self.blockchain.read().await.get_chain() };
 
                         for block in chain {
-                            let block_json = to_string(&block).unwrap(); // Serialize block
-                            let block_chunk = format!("{}{}\n", block_json, "<END_BLOCK>"); // Append delimiter
+                            let block_json_string = match to_string(&block) {
+                                Ok(result) => result,
+                                Err(e) => {
+                                    server_error!("Failed to serialize block: {}", e);
+                                    break;
+                                }
+                            };
+                            let block_chunk = format!("{}{}\n", block_json_string, "<END_BLOCK>"); // Append delimiter
 
                             if let Err(e) = stream.write_all(block_chunk.as_bytes()).await {
                                 server_error!("Failed to send block: {}", e);
@@ -171,7 +177,14 @@ impl ServerHandler {
                                 }
                                 peers_lock.clone()
                             };
-                            let response = serde_json::to_string(&peers).unwrap();
+                            let response = match serde_json::to_string(&peers) {
+                                Ok(result) => result,
+                                Err(e) => {
+                                    server_error!("Failed to serialize peers: {}", e);
+                                    return;
+                                }
+                            };
+
                             let _ = stream.write_all(response.as_bytes()).await;
                         } else {
                             server_warn!("Invalid new peer received")
@@ -211,7 +224,7 @@ impl ServerHandler {
             self.broadcaster
                 .lock()
                 .await
-                .broadcast_new_block(&block.clone())
+                .broadcast_item(BroadcastItem::NewBlock(block.clone()))
                 .await;
         }
     }

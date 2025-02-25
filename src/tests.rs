@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use crate::blockchain;
-    use crate::blockchain::{create_genesis_block};
+    use crate::blockchain::create_genesis_block;
     use crate::config::load_config;
     use crate::db::Database;
     use crate::pool::TransactionPool;

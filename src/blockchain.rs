@@ -39,7 +39,7 @@ impl Blockchain {
             return Some(Transaction::new(
                 "COINBASE".to_string(), // Sender is "COINBASE"
                 miner_address.clone(),  // Miner receives the reward
-                REWARD as f64 + fees,          // Reward amount
+                REWARD as f64 + fees,   // Reward amount
                 0.0,                    // No fee for coinbase transactions
                 new_timestamp as i64,
             ));
@@ -97,7 +97,7 @@ impl Blockchain {
 
     #[allow(dead_code)]
     pub fn mine_new_block(&self, data: Vec<Transaction>) -> Block {
-        let (mut mined_block,_,  difficult) = self.prepare_block_for_mining(data);
+        let (mut mined_block, _, difficult) = self.prepare_block_for_mining(data);
         mined_block.mine(difficult);
 
         mined_block
@@ -106,9 +106,8 @@ impl Blockchain {
     pub fn prepare_block_for_mining(&self, data: Vec<Transaction>) -> (Block, f64, usize) {
         // We need to compute the sum of fees, because it's used as reward for miners
         let mut fees = 0.0;
-        let _ = &data.iter().for_each(|tx| {fees += tx.fee.into_inner()});
+        let _ = &data.iter().for_each(|tx| fees += tx.fee.into_inner());
 
-        
         let last_block = self.chain.last().unwrap();
         let new_index = last_block.index + 1;
         let new_timestamp = chrono::Utc::now().timestamp() as u64;

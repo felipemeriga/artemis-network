@@ -97,10 +97,10 @@ impl Database {
 
     pub fn get_wallet_balance(&self, wallet_address: &str) -> Result<f64, DatabaseError> {
         let transactions = self.get_transactions_by_wallet(wallet_address)?;
-    
+
         let mut balance: f64 = 0.0;
-    
-        let _ = transactions.iter().for_each(|tx| {
+
+        transactions.iter().for_each(|tx| {
             if tx.recipient == wallet_address {
                 balance += tx.amount.into_inner(); // Add received amount
             }
@@ -109,7 +109,7 @@ impl Database {
                 balance -= tx.fee.into_inner(); // Subtract sent fee
             }
         });
-    
+
         Ok(balance)
     }
 

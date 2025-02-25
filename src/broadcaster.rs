@@ -1,7 +1,7 @@
-use crate::block::Block;
+use crate::constants::{NEW_BLOCK, TRANSACTION};
 use crate::server::Request;
-use crate::transaction::Transaction;
 use crate::{broadcaster_error, broadcaster_info};
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
@@ -13,53 +13,58 @@ pub struct Broadcaster {
     tcp_address: String,
 }
 
+pub enum BroadcastItem<T>
+where
+    T: Serialize + for<'de> Deserialize<'de>, // Simplified lifetime here
+{
+    NewBlock(T),
+    Transaction(T),
+}
+
 impl Broadcaster {
     pub fn new(peers: Arc<Mutex<HashSet<String>>>, tcp_address: String) -> Self {
         Self { peers, tcp_address }
     }
 
-    pub async fn broadcast_new_block(&self, block: &Block) {
-        broadcaster_info!("broadcasting new block to peers");
+    pub async fn broadcast_item<T>(&self, payload: BroadcastItem<T>)
+    where
+        T: Serialize + for<'de> Deserialize<'de>,
+    {
+        let (data, command, header) = match payload {
+            BroadcastItem::NewBlock(block) => (block, NEW_BLOCK.to_string(), "block".to_string()),
+            BroadcastItem::Transaction(tx) => {
+                (tx, TRANSACTION.to_string(), "transaction".to_string())
+            }
+        };
+
+        broadcaster_info!("broadcasting new {} to peers", header);
         let peers_list = { self.peers.lock().await.clone() };
         for peer_address in peers_list {
             if peer_address == self.tcp_address {
                 continue;
             }
             if let Ok(mut stream) = TcpStream::connect(&peer_address).await {
+                let block_string = match serde_json::to_string(&data) {
+                    Ok(result) => result,
+                    Err(e) => {
+                        broadcaster_error!("Failed to serialize {}: {}", header, e);
+                        break;
+                    }
+                };
                 let request = Request {
-                    command: "new_block".to_string(),
-                    data: serde_json::to_string(&block).unwrap(),
+                    command: command.clone(),
+                    data: block_string,
                 };
 
-                let serialized_request = serde_json::to_string(&request).unwrap();
-                if let Err(e) = stream.write_all(serialized_request.as_bytes()).await {
-                    broadcaster_error!("Failed to send block to {}: {}", peer_address, e);
-                }
-            } else {
-                {
-                    // In the case the node can't connect to that peer, it will remove from the list
-                    self.peers.lock().await.remove(&peer_address);
-                }
-            }
-        }
-    }
-
-    pub async fn broadcast_transaction(&self, transaction: Transaction) {
-        broadcaster_info!("broadcasting new transaction to peers");
-        let peers_list = { self.peers.lock().await.clone() };
-        for peer_address in peers_list {
-            if peer_address == self.tcp_address {
-                continue;
-            }
-            if let Ok(mut stream) = TcpStream::connect(&peer_address).await {
-                let request = Request {
-                    command: "transaction".to_string(),
-                    data: serde_json::to_string(&transaction).unwrap(),
+                let serialized_request = match serde_json::to_string(&request) {
+                    Ok(result) => result,
+                    Err(err) => {
+                        broadcaster_error!("Failed to serialize request: {}", err);
+                        break;
+                    }
                 };
-
-                let serialized_request = serde_json::to_string(&request).unwrap();
                 if let Err(e) = stream.write_all(serialized_request.as_bytes()).await {
-                    broadcaster_error!("Failed to send transaction to {}: {}", peer_address, e);
+                    broadcaster_error!("Failed to send {} to {}: {}", header, peer_address, e);
                 }
             } else {
                 {

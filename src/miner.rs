@@ -1,6 +1,6 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
-use crate::broadcaster::Broadcaster;
+use crate::broadcaster::{BroadcastItem, Broadcaster};
 use crate::db::Database;
 use crate::miner_info;
 use crate::pool::TransactionPool;
@@ -150,7 +150,7 @@ impl Miner {
                         self.broadcaster
                             .lock()
                             .await
-                            .broadcast_new_block(&new_block)
+                            .broadcast_item(BroadcastItem::NewBlock(new_block.clone()))
                             .await;
                     }
 

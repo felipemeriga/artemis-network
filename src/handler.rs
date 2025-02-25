@@ -1,3 +1,4 @@
+use crate::broadcaster::BroadcastItem;
 use crate::server::ServerHandler;
 use crate::server_info;
 use crate::transaction::{SignTransactionRequest, Transaction};
@@ -37,7 +38,7 @@ pub async fn submit_transaction(
                 .broadcaster
                 .lock()
                 .await
-                .broadcast_transaction(tx)
+                .broadcast_item(BroadcastItem::Transaction(tx))
                 .await;
         }
         server_info!("New valid transaction received");
@@ -105,7 +106,7 @@ pub async fn sign_and_submit_transaction(
             .broadcaster
             .lock()
             .await
-            .broadcast_transaction(transaction)
+            .broadcast_item(BroadcastItem::Transaction(transaction))
             .await;
     }
 
