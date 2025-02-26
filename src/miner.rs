@@ -104,23 +104,20 @@ impl Miner {
 
                 select! {
                     // If a new block is received from the network
-                    Some(new_block) = self.block_rx.recv() => {
-                        miner_info!("Received valid updated state during mining, aborting the current process");
-                        if new_block.is_some() {
-                            // check if the new incoming block,
-                            // contains transactions that are present in this transaction pool
+                    Some(received_option) = self.block_rx.recv() => {
+                        if let Some(new_block) = received_option {
+                            miner_info!("Received valid updated state during mining, aborting the current process");
                             {
-                             self.transaction_pool.lock().await.process_mined_transactions(false, &new_block.clone().unwrap().transactions);
+                             self.transaction_pool.lock().await.process_mined_transactions(false, &new_block.clone().transactions);
                             }
+                            // Executing the database persistence concurrently
+                            let persist_block = new_block.clone();
+                            let database = self.database.clone();
+                            tokio::spawn(async move {
+                                Self::save_mine_result(database, persist_block).await;
+                            });
+                            break; // Exit the mining loop and restart
                         }
-
-                        // Executing the database persistence concurrently
-                        let persist_block = new_block.clone().unwrap();
-                        let database = self.database.clone();
-                        tokio::spawn(async move {
-                            Self::save_mine_result(database, persist_block).await;
-                        });
-                        break; // Exit the mining loop and restart
                     }
 
                     // Simulate mining time to let other tasks execute, uncomment this for making the mining

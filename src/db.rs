@@ -34,7 +34,7 @@ impl Database {
         // Store transaction by hash
         self.db.insert(
             tx_hash,
-            bincode::serialize(tx).map_err(|_| DatabaseError::BinCodeError)?,
+            bincode::serialize(tx).map_err(|_| DatabaseError::BinCode)?,
         )?;
 
         // Index transaction by sender
@@ -48,7 +48,7 @@ impl Database {
 
     pub fn add_transaction_to_index(&self, key: &str, tx_hash: &str) -> Result<(), DatabaseError> {
         let mut tx_list: Vec<String> = match self.db.get(key)? {
-            Some(value) => bincode::deserialize(&value).map_err(|_| DatabaseError::BinCodeError)?,
+            Some(value) => bincode::deserialize(&value).map_err(|_| DatabaseError::BinCode)?,
             None => vec![],
         };
 
@@ -56,7 +56,7 @@ impl Database {
             tx_list.push(tx_hash.to_string());
             self.db.insert(
                 key,
-                bincode::serialize(&tx_list).map_err(|_| DatabaseError::BinCodeError)?,
+                bincode::serialize(&tx_list).map_err(|_| DatabaseError::BinCode)?,
             )?;
         }
 
@@ -66,7 +66,7 @@ impl Database {
     pub fn get_transaction(&self, tx_hash: &str) -> Result<Option<Transaction>, DatabaseError> {
         match self.db.get(tx_hash)? {
             Some(value) => Ok(Some(
-                bincode::deserialize(&value).map_err(|_| DatabaseError::BinCodeError)?,
+                bincode::deserialize(&value).map_err(|_| DatabaseError::BinCode)?,
             )),
             None => Ok(None),
         }
@@ -80,7 +80,7 @@ impl Database {
         match self.db.get(key)? {
             Some(value) => {
                 let tx_hashes: Vec<String> =
-                    bincode::deserialize(&value).map_err(|_| DatabaseError::BinCodeError)?;
+                    bincode::deserialize(&value).map_err(|_| DatabaseError::BinCode)?;
                 let mut transactions = vec![];
 
                 for tx_hash in tx_hashes {
@@ -115,7 +115,7 @@ impl Database {
 
     pub fn store_block(&self, block: &Block) -> Result<(), DatabaseError> {
         let key = format!("block:{}", block.hash);
-        let value = serde_json::to_vec(block).unwrap();
+        let value = serde_json::to_vec(block)?;
         self.db.insert(key, value)?;
         Ok(())
     }
@@ -123,7 +123,12 @@ impl Database {
     pub fn get_block(&self, block_hash: &str) -> Option<Block> {
         let key = format!("block:{}", block_hash);
         if let Ok(Some(value)) = self.db.get(key) {
-            let block: Block = serde_json::from_slice(&value).unwrap();
+            let block: Block = match serde_json::from_slice(&value) {
+                Ok(result) => result,
+                Err(_) => {
+                    return None;
+                }
+            };
             return Some(block);
         }
         None

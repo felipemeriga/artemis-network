@@ -1,4 +1,4 @@
-use crate::discover_info;
+use crate::{discover_error, discover_info};
 use crate::server::Request;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -42,16 +42,29 @@ impl Discover {
                         id: node_id.clone(),
                         address: tcp_address.clone(),
                     };
+                    
+                    let data = match serde_json::to_string(&this_peer){
+                        Ok(result) => result,
+                        Err(err) => {
+                            discover_error!("failed to serialize peer data: {}", err);
+                            continue;
+                        }
+                    };
 
                     // Send request to register itself in the bootstrap node
                     let request = Request {
                         command: "register".to_string(),
-                        data: serde_json::to_string(&this_peer).unwrap(),
+                        data,
                     };
 
-                    let marshalled_request = serde_json::to_string(&request).unwrap();
+                    let marshalled_request = match serde_json::to_string(&request){
+                        Ok(result) => result,
+                        Err(err) => {
+                            discover_error!("failed to serialize request: {}", err);
+                            continue;
+                        }
+                    };
 
-                    // TODO - Add fatal error for connecting to invalid bootstrap node
                     if stream
                         .write_all(marshalled_request.as_bytes())
                         .await

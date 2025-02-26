@@ -33,11 +33,10 @@ impl Wallet {
     }
 
     pub fn from_hex_string(public_key: String, private_key: String) -> Result<Wallet, WalletError> {
-        // TODO - Remove unwrap
         let decoded_public_key = hex::decode(public_key)?;
         let decoded_private_key = hex::decode(private_key)?;
 
-        let private_key_array: [u8; 32] = decoded_private_key.as_slice().try_into().unwrap();
+        let private_key_array: [u8; 32] = decoded_private_key.as_slice().try_into()?;
 
         Ok(Wallet {
             public_key: PublicKey::from_slice(&decoded_public_key)?,
