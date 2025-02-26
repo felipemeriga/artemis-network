@@ -68,7 +68,7 @@ mod tests {
             chrono::Utc::now().timestamp(),
         );
         transaction.sign(&sender_wallet);
-        assert_eq!(transaction.verify(&sender_wallet.public_key), true);
+        assert_eq!(transaction.verify(), true);
     }
 
     #[test]
@@ -91,7 +91,7 @@ mod tests {
         // since the signing hash, will be different
         transaction.amount = OrderedFloat::from(10.0);
 
-        assert_eq!(transaction.verify(&sender_wallet.public_key), false);
+        assert_eq!(transaction.verify(), false);
     }
 
     #[test]
@@ -158,6 +158,7 @@ mod tests {
         httpAddress: "127.0.0.1:3000"
         bootstrapAddress: "127.0.0.1:4000"
         nodeId: "node-123"
+        minerWalletAddress: "30114c915aae70a7f5744f6263119c266b9a8dd9cb209385d4759fa76bf0741b"
         "#;
 
         // Write test data to a temporary file

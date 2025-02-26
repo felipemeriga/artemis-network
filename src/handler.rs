@@ -1,6 +1,7 @@
+use crate::broadcaster::BroadcastItem;
 use crate::server::ServerHandler;
 use crate::server_info;
-use crate::transaction::{SignTransactionRequest, SubmitTransactionRequest};
+use crate::transaction::{SignTransactionRequest, Transaction};
 use crate::wallet::Wallet;
 use actix_web::{get, post, web, HttpResponse, Responder};
 use std::sync::Arc;
@@ -9,21 +10,25 @@ use std::sync::Arc;
 #[post("/transaction/submit")]
 pub async fn submit_transaction(
     handler: web::Data<Arc<ServerHandler>>,
-    transaction_request: web::Json<SubmitTransactionRequest>,
+    transaction_request: web::Json<Transaction>,
 ) -> impl Responder {
-    let tx_request = transaction_request.into_inner();
-    let tx = tx_request.transaction;
-    let public_key_hex = tx_request.public_key_hex;
+    let tx = transaction_request.into_inner();
 
-    let public_key = match Wallet::public_key_from_hex_string(public_key_hex) {
-        Ok(public_key) => public_key,
-        Err(_) => return HttpResponse::BadRequest().body("Invalid public key"),
-    };
-
-    if tx.verify(&public_key) {
+    if tx.verify() {
         let server_handler = handler.into_inner();
-        server_info!("New valid transaction received");
         {
+            if let Ok(balance) = server_handler
+                .database
+                .lock()
+                .await
+                .get_wallet_balance(&tx.sender)
+            {
+                if balance < tx.amount.into_inner() + tx.fee.into_inner() {
+                    return HttpResponse::BadRequest().body("Insufficient funds");
+                }
+            } else {
+                return HttpResponse::InternalServerError().body("Couldn't get wallet balance.");
+            }
             server_handler
                 .transaction_pool
                 .lock()
@@ -33,9 +38,10 @@ pub async fn submit_transaction(
                 .broadcaster
                 .lock()
                 .await
-                .broadcast_transaction(tx)
+                .broadcast_item(BroadcastItem::Transaction(tx))
                 .await;
         }
+        server_info!("New valid transaction received");
         HttpResponse::Ok().body("Transaction received and added to node.")
     } else {
         HttpResponse::BadRequest().body("Transaction not signed")
@@ -78,17 +84,32 @@ pub async fn sign_and_submit_transaction(
     transaction.sign(&wallet);
 
     let server_handler = handler.into_inner();
-    server_handler
-        .transaction_pool
-        .lock()
-        .await
-        .add_transaction(transaction.clone());
-    server_handler
-        .broadcaster
-        .lock()
-        .await
-        .broadcast_transaction(transaction)
-        .await;
+    {
+        if let Ok(balance) = server_handler
+            .database
+            .lock()
+            .await
+            .get_wallet_balance(&transaction.sender)
+        {
+            if balance < transaction.amount.into_inner() {
+                return HttpResponse::BadRequest().body("Insufficient funds");
+            }
+        } else {
+            return HttpResponse::InternalServerError().body("Couldn't get wallet balance.");
+        }
+        server_handler
+            .transaction_pool
+            .lock()
+            .await
+            .add_transaction(transaction.clone());
+        server_handler
+            .broadcaster
+            .lock()
+            .await
+            .broadcast_item(BroadcastItem::Transaction(transaction))
+            .await;
+    }
+
     server_info!("New valid transaction received");
 
     HttpResponse::Ok().body("Transaction received, signed and submitted.")
@@ -144,7 +165,7 @@ pub async fn get_transactions_by_wallet(
     handler: web::Data<Arc<ServerHandler>>,
     path: web::Path<String>,
 ) -> impl Responder {
-    let address = path.into_inner(); // Extract the transaction hash from the path
+    let address = path.into_inner(); // Extract the address hash from the path
     if address.is_empty() {
         return HttpResponse::BadRequest().body("Invalid wallet address");
     };
@@ -158,6 +179,29 @@ pub async fn get_transactions_by_wallet(
 
     match result {
         Ok(transactions) => HttpResponse::Ok().json(transactions),
+        Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
+    }
+}
+
+#[get("/wallet/balance/{address}")]
+pub async fn get_wallet_balance(
+    handler: web::Data<Arc<ServerHandler>>,
+    path: web::Path<String>,
+) -> impl Responder {
+    let address = path.into_inner(); // Extract the address hash from the path
+    if address.is_empty() {
+        return HttpResponse::BadRequest().body("Invalid wallet address");
+    };
+    let server_handler = handler.into_inner();
+
+    let result = server_handler
+        .database
+        .lock()
+        .await
+        .get_wallet_balance(address.as_str());
+
+    match result {
+        Ok(balance) => HttpResponse::Ok().json(balance),
         Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
     }
 }

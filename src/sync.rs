@@ -60,7 +60,13 @@ impl Sync {
                         command: "get_blockchain".to_string(),
                         data: "".to_string(),
                     };
-                    let marshalled_request = serde_json::to_string(&request).unwrap();
+                    let marshalled_request = match serde_json::to_string(&request) {
+                        Ok(result) => result,
+                        Err(e) => {
+                            sync_info!("Failed to serialize request: {}", e);
+                            continue;
+                        }
+                    };
 
                     if stream
                         .write_all(marshalled_request.as_bytes())

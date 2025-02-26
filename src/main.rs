@@ -5,6 +5,7 @@ mod block;
 mod blockchain;
 mod broadcaster;
 mod config;
+mod constants;
 mod db;
 mod discover;
 mod error;
@@ -17,6 +18,7 @@ mod server;
 mod sync;
 mod tests;
 mod transaction;
+mod utils;
 mod wallet;
 
 use crate::config::load_config;

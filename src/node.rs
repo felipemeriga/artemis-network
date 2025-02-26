@@ -91,37 +91,34 @@ impl Node {
             database.clone(),
             true,
             1,
+            config.miner_wallet_address.clone(),
         );
-        if config.bootstrap_address.is_some() {
+        if let Some(address) = config.bootstrap_address {
             {
                 peers
                     .lock()
                     .await
-                    .insert(config.bootstrap_address.clone().unwrap());
+                    .insert(address);
             }
         }
         let peers = peers.clone();
         let mut discover = Discover::new(peers);
 
-        // else {
-        //     {
-        //         *first_discover_done.lock().await = true;
-        //     }
-        // }
-
         // Run everything concurrently
         let _ = tokio::join!(
             async {
-                tcp_server
+                if let Err(err) = tcp_server
                     .start_tcp_server(config.tcp_address.clone())
-                    .await
-                    .unwrap();
+                    .await {
+                    panic!("Failed to start TCP server: {}", err);
+                }
             },
             async {
-                http_server
+                if let Err(err) = http_server
                     .start_http_server(config.http_address)
-                    .await
-                    .unwrap();
+                    .await {
+                     panic!("Failed to start HTTP server: {}", err);
+                }
             },
             async {
                 discover
@@ -146,7 +143,3 @@ impl Node {
         );
     }
 }
-
-// fn validate_ip_with_port(s: &str) -> Result<SocketAddr, std::net::AddrParseError> {
-//     s.parse()
-// }

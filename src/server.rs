@@ -1,12 +1,13 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
-use crate::broadcaster::Broadcaster;
+use crate::broadcaster::{BroadcastItem, Broadcaster};
+use crate::constants::{GET_BLOCKCHAIN, NEW_BLOCK, REGISTER, TRANSACTION};
 use crate::db::Database;
 use crate::discover::Peer;
 use crate::handler::{
     create_wallet, get_all_blocks, get_block_by_hash, get_transaction_by_hash,
-    get_transactions_by_wallet, health_check, sign_and_submit_transaction, sign_transaction,
-    submit_transaction,
+    get_transactions_by_wallet, get_wallet_balance, health_check, sign_and_submit_transaction,
+    sign_transaction, submit_transaction,
 };
 use crate::pool::TransactionPool;
 use crate::transaction::Transaction;
@@ -72,6 +73,7 @@ impl ServerHandler {
                 .service(get_transactions_by_wallet)
                 .service(get_block_by_hash)
                 .service(get_all_blocks)
+                .service(get_wallet_balance)
         })
         .bind(http_addr)?
         .run()
@@ -98,7 +100,7 @@ impl ServerHandler {
             let request: Result<Request, _> = serde_json::from_slice(&buffer[..n]);
             if let Ok(req) = request {
                 match req.command.as_str() {
-                    "transaction" => {
+                    TRANSACTION => {
                         if let Ok(tx) = serde_json::from_str::<Transaction>(&req.data) {
                             // Inside the function,
                             // there is already a validation,
@@ -112,7 +114,7 @@ impl ServerHandler {
                                 self.broadcaster
                                     .lock()
                                     .await
-                                    .broadcast_transaction(tx.clone())
+                                    .broadcast_item(BroadcastItem::Transaction(tx.clone()))
                                     .await;
                             };
                             self.transaction_pool.lock().await.add_transaction(tx);
@@ -120,7 +122,7 @@ impl ServerHandler {
                             server_warn!("Invalid transaction received")
                         }
                     }
-                    "new_block" => {
+                    NEW_BLOCK => {
                         if let Ok(block) = serde_json::from_str::<Block>(&req.data) {
                             let latest_block =
                                 { self.blockchain.read().await.get_last_block().clone() };
@@ -135,12 +137,18 @@ impl ServerHandler {
                             server_warn!("Invalid block received")
                         }
                     }
-                    "get_blockchain" => {
+                    GET_BLOCKCHAIN => {
                         let chain = { self.blockchain.read().await.get_chain() };
 
                         for block in chain {
-                            let block_json = to_string(&block).unwrap(); // Serialize block
-                            let block_chunk = format!("{}{}\n", block_json, "<END_BLOCK>"); // Append delimiter
+                            let block_json_string = match to_string(&block) {
+                                Ok(result) => result,
+                                Err(e) => {
+                                    server_error!("Failed to serialize block: {}", e);
+                                    break;
+                                }
+                            };
+                            let block_chunk = format!("{}{}\n", block_json_string, "<END_BLOCK>"); // Append delimiter
 
                             if let Err(e) = stream.write_all(block_chunk.as_bytes()).await {
                                 server_error!("Failed to send block: {}", e);
@@ -156,7 +164,7 @@ impl ServerHandler {
                         let _ = stream.write_all(b"<END_CHAIN>\n").await;
                         let _ = stream.flush().await;
                     }
-                    "register" => {
+                    REGISTER => {
                         if let Ok(peer) = serde_json::from_str::<Peer>(&req.data) {
                             let peers = {
                                 let mut peers_lock = self.peers.lock().await;
@@ -169,7 +177,14 @@ impl ServerHandler {
                                 }
                                 peers_lock.clone()
                             };
-                            let response = serde_json::to_string(&peers).unwrap();
+                            let response = match serde_json::to_string(&peers) {
+                                Ok(result) => result,
+                                Err(e) => {
+                                    server_error!("Failed to serialize peers: {}", e);
+                                    return;
+                                }
+                            };
+
                             let _ = stream.write_all(response.as_bytes()).await;
                         } else {
                             server_warn!("Invalid new peer received")
@@ -209,7 +224,7 @@ impl ServerHandler {
             self.broadcaster
                 .lock()
                 .await
-                .broadcast_new_block(&block.clone())
+                .broadcast_item(BroadcastItem::NewBlock(block.clone()))
                 .await;
         }
     }
