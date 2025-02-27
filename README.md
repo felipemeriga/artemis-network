@@ -106,5 +106,5 @@ genesis node, you don't need to provide this attribute.
 To run Artemis-network locally, use the following command:
 
 ```shell
-cargo run --color=always --package artemis-network --features dev --bin artemis-network -- --config=./config/config-1.yaml
+cargo run --color=always --package artemis-network --features dev --bin artemis-network -- --config=./config/node-1.yaml
 ```

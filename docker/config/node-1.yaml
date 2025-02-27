@@ -1,5 +1,7 @@
-tcpAddress: "127.0.0.1:5000"
+# Config file for being used within Docker context
+
+tcpAddress: "node1:5000"
 httpAddress: "0.0.0.0:8080"    # This field is present
 bootstrapAddress: null           # This explicitly sets the value to null (equivalent to None)
-nodeId: "master"
+nodeId: "node-1"
 minerWalletAddress: "30114c915aae70a7f5744f6263119c266b9a8dd9cb209385d4759fa76bf0741b"

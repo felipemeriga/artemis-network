@@ -1,0 +1,51 @@
+version: "3.8"
+
+services:
+  node1:
+    image: artemis-network:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080" # Bind container to external port 8080
+    volumes:
+      - ./config/node-1.yaml:/app/config/node-1.yaml
+    command: --config ./config/node-1.yaml
+    networks:
+      app-network:
+        aliases:
+          - node1 # Internal hostname
+
+  node2:
+    image: artemis-network:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8080" # Bind container to external port 8081
+    volumes:
+      - ./config/node-2.yaml:/app/config/node-2.yaml
+    command: --config ./config/node-2.yaml
+    networks:
+      app-network:
+        aliases:
+          - node2 # Internal hostname
+
+  node3:
+    image: artemis-network:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8080" # Bind container to external port 8082
+    volumes:
+      - ./config/node-3.yaml:/app/config/node-3.yaml
+    command: --config ./config/node-3.yaml
+    networks:
+      app-network:
+        aliases:
+          - node3 # Internal hostname
+
+networks:
+  app-network:
+    driver: bridge
