@@ -28,6 +28,8 @@ impl Discover {
         tcp_address: String,
         first_discover_done: Arc<Mutex<bool>>,
     ) {
+        // First 3-seconds sleep
+        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
         loop {
             discover_info!("Looking for discovering new peers");
             let peers = { self.peers.lock().await.clone() };
@@ -95,6 +97,7 @@ impl Discover {
                         }
                     }
                 } else {
+                    discover_error!("Failed to connect to peer: {}", peer_address);
                     {
                         // In the case the node can't connect to that peer, it will remove from the list
                         self.peers.lock().await.remove(&peer_address);

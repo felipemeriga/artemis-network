@@ -15,7 +15,7 @@ impl Blockchain {
         let genesis_block = create_genesis_block();
         Blockchain {
             chain: vec![genesis_block],
-            difficulty: 5, // Set the PoW difficulty (e.g., 4 leading zeros)
+            difficulty: 6, // Set the PoW difficulty (e.g., 4 leading zeros)
             total_supply: 0,
         }
     }

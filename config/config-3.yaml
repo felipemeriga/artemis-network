@@ -1,4 +1,5 @@
 tcpAddress: "127.0.0.1:5002"
-httpAddress: "127.0.0.1:7070"
+httpAddress: "0.0.0.0:7070"
 bootstrapAddress: "127.0.0.1:5000"
 nodeId: "slave-2"
+minerWalletAddress: "04efe328f5f5068ce507717eb373ac8f5604d28d3109d4e53c8e1fbc91a9a85b"

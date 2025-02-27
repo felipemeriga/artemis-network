@@ -1,0 +1,7 @@
+# Config file for being used within Docker context
+
+tcpAddress: "node2:5000"
+httpAddress: "0.0.0.0:8080"
+bootstrapAddress: "node1:5000"
+nodeId: "node-2"
+minerWalletAddress: "6a145b48ead5b98fec506e0dfd04e44c3248bc013a49af7032ea538867f36495"
