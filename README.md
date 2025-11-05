@@ -62,7 +62,3 @@ Each component runs as an independent Tokio task, safely sharing state through A
 ## Contributing
 
 Contributions are welcome! This is an educational project, so clarity and learning value are prioritized over production optimizations.
-
-## License
-
-[Add your license here]

@@ -165,8 +165,3 @@ All major components run as independent Tokio tasks:
 | POST | `/create-wallet` | Create new wallet |
 | GET | `/health` | Health check |
 
-## Getting Started
-
-For development commands and environment setup, see [CLAUDE.md](CLAUDE.md).
-
-For understanding specific concepts in depth, explore the detailed documentation linked above.
